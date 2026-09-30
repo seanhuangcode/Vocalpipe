@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vocal Piano Roll</title>
+<style>
+:root {
+  --bg: #f6f5f2; --panel: #ffffff; --ink: #1d1d1f; --muted: #6b6b70; --line: #e3e1dc;
+  --row-black: #efede8; --row-white: #faf9f6; --c-line: #d3d0c8;
+  --note: #3a6fd8; --note-active: #e8663d; --curve: #1d1d1f; --playhead: #e8663d;
+  --key-white: #ffffff; --key-black: #2a2a2e; --key-hit: #e8663d; --good: #2e9d62; --warn: #d9a21b; --bad: #d4483b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141416; --panel: #1c1c1f; --ink: #ececef; --muted: #9a9aa2; --line: #2c2c31;
+    --row-black: #1a1a1d; --row-white: #202024; --c-line: #34343a;
+    --note: #6f9cff; --note-active: #ff8a5c; --curve: #f2f2f5; --playhead: #ff8a5c;
+    --key-white: #d9d9de; --key-black: #26262a;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141416; --panel: #1c1c1f; --ink: #ececef; --muted: #9a9aa2; --line: #2c2c31;
+  --row-black: #1a1a1d; --row-white: #202024; --c-line: #34343a;
+  --note: #6f9cff; --note-active: #ff8a5c; --curve: #f2f2f5; --playhead: #ff8a5c;
+  --key-white: #d9d9de; --key-black: #26262a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+main { max-width: 1400px; margin: 0 auto; padding: 20px 16px 40px; }
+h1 { font-size: 20px; margin: 0 0 4px; font-weight: 650; }
+.stats { color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 16px; margin-bottom: 16px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 10px 14px; }
+button { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 7px; padding: 5px 12px; cursor: pointer; }
+button.primary { background: var(--note); border-color: var(--note); color: #fff; min-width: 84px; font-weight: 600; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--note); outline-offset: 2px; }
+.time { font-variant-numeric: tabular-nums; min-width: 120px; }
+label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; }
+input[type=range] { width: 90px; accent-color: var(--note); }
+select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }
+.track.off { opacity: .45; }
+.top { display: grid; grid-template-columns: 1fr 300px; gap: 12px; margin-bottom: 12px; }
+.now { padding: 12px 16px; display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; align-items: center; }
+.now .big { font-size: 34px; font-weight: 700; grid-row: span 2; min-width: 70px; font-variant-numeric: tabular-nums; }
+.now .hz { font-variant-numeric: tabular-nums; }
+.meter { grid-column: 1 / -1; position: relative; height: 8px; background: var(--line); border-radius: 4px; margin-top: 8px; }
+.meter::after { content: ""; position: absolute; left: 50%; top: -3px; width: 1px; height: 14px; background: var(--muted); }
+.meter i { position: absolute; top: -2px; width: 12px; height: 12px; border-radius: 50%; background: var(--good);
+  transform: translateX(-50%); left: 50%; transition: left .06s linear; }
+.meter-labels { grid-column: 1 / -1; display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
+.roll-wrap { position: relative; margin-bottom: 12px; overflow: hidden; }
+canvas#roll { display: block; width: 100%; height: 520px; cursor: crosshair; touch-action: none; }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); padding: 4px 8px;
+  border-radius: 6px; font-size: 12px; white-space: nowrap; display: none; font-variant-numeric: tabular-nums; }
+.hint { color: var(--muted); font-size: 12px; padding: 0 14px 10px; }
+.table-wrap { max-height: 360px; overflow: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 5px 12px; border-bottom: 1px solid var(--line); }
+th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-weight: 600; }
+th:nth-child(4), td:nth-child(4) { text-align: left; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--bg); }
+tr.cur td { background: color-mix(in srgb, var(--note-active) 18%, transparent); }
+.c-good { color: var(--good); } .c-warn { color: var(--warn); } .c-bad { color: var(--bad); }
+.missing { color: var(--bad); font-size: 12px; }
+@media (max-width: 820px) { .top { grid-template-columns: 1fr; } canvas#roll { height: 420px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title"></h1>
+  <div class="stats" id="stats"></div>
+
+  <div class="top">
+    <div class="panel bar">
+      <button class="primary" id="play">▶ Play</button>
+      <button id="rewind" title="Back to start">⏮</button>
+      <span class="time" id="time">0:00.0</span>
+      <label>Speed <select id="speed"><option>0.5</option><option>0.75</option><option selected>1</option></select></label>
+      <span class="track" data-track="vocals"><label><input type="checkbox" checked> Vocals</label> <input type="range" min="0" max="1" step="0.01" value="0.8"></span>
+      <span class="track" data-track="backing"><label><input type="checkbox"> Backing</label> <input type="range" min="0" max="1" step="0.01" value="0.6"></span>
+      <span class="track" data-track="piano"><label><input type="checkbox" checked> Piano</label> <input type="range" min="0" max="1" step="0.01" value="0.7"></span>
+      <label><input type="checkbox" id="showCurve" checked> Pitch curve</label>
+      <label><input type="checkbox" id="follow" checked> Follow</label>
+      <label>Zoom <input type="range" id="zoom" min="20" max="600" value="140"></label>
+    </div>
+    <div class="panel now" aria-live="off">
+      <div class="big" id="nowNote">–</div>
+      <div class="hz" id="nowHz">sung: –</div>
+      <div class="hz" id="nowMidi">transcribed: –</div>
+      <div class="meter"><i id="needle"></i></div>
+      <div class="meter-labels"><span>−50¢ flat</span><span>in tune</span><span>sharp +50¢</span></div>
+    </div>
+  </div>
+
+  <div class="panel roll-wrap">
+    <canvas id="roll"></canvas>
+    <div class="tip" id="tip"></div>
+    <div class="hint">Click a key to hear it · click a note to hear it and jump there · click empty space to seek ·
+      scroll to pan · ⌘/Ctrl + scroll to zoom · Space play/pause · ←/→ skip 5s</div>
+  </div>
+
+  <div class="panel table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Start</th><th>Dur</th><th>Note</th><th>Sung Hz</th><th>Note Hz</th><th>Cents</th><th>Vel</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</main>
+
+<audio id="a-vocals" preload="auto"></audio>
+<audio id="a-backing" preload="auto"></audio>
+
+<script>
+const D = /*__DATA__*/;
+const NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const noteName = m => NAMES[m % 12] + (Math.floor(m / 12) - 1);
+const isBlack = m => [1,3,6,8,10].includes(m % 12);
+const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+const fmt = t => { t = Math.max(0, t); const m = Math.floor(t / 60); return m + ":" + (t - m * 60).toFixed(1).padStart(4, "0"); };
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+const notes = D.notes;
+const curve = D.curve;  // MIDI (float) per frame, null when unvoiced
+const fps = D.fps;
+
+// ---------- header ----------
+$("title").textContent = D.title;
+document.title = D.title + " · piano roll";
+if (notes.length) {
+  const lo = notes.reduce((a, b) => b.pitch < a.pitch ? b : a), hi = notes.reduce((a, b) => b.pitch > a.pitch ? b : a);
+  $("stats").innerHTML = [
+    `${notes.length} notes`, `range ${lo.name}–${hi.name} (${lo.note_hz.toFixed(0)}–${hi.note_hz.toFixed(0)} Hz)`,
+    `key ${D.key}`, D.autotune ? "autotuned vocal · notes snapped to key" : "natural vocal",
+    `length ${fmt(D.duration)}`, `singer tuning ${D.tuning_cents >= 0 ? "+" : ""}${D.tuning_cents}¢ vs A440`,
+    `pitch model: ${D.backend}`].map(s => `<span>${s}</span>`).join("");
+}
+
+// ---------- audio ----------
+let ctx = null, pianoBus = null, wave = null;
+const tracks = {
+  vocals: { el: $("a-vocals"), src: D.audio.vocals, on: true, vol: 0.8, ok: false },
+  backing: { el: $("a-backing"), src: D.audio.backing, on: false, vol: 0.6, ok: false },
+  piano: { on: true, vol: 0.7, ok: true },
+};
+for (const [k, t] of Object.entries(tracks)) {
+  if (!t.el) continue;
+  if (t.src) { t.el.src = t.src; t.el.addEventListener("loadedmetadata", () => { t.ok = true; }); }
+  t.el.addEventListener("error", () => {
+    t.ok = false;
+    document.querySelector(`[data-track=${k}]`).insertAdjacentHTML("beforeend", ` <span class="missing">not found</span>`);
+  });
+}
+
+function ensureCtx() {
+  if (ctx) return ctx.resume();
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  pianoBus = ctx.createGain();
+  pianoBus.gain.value = tracks.piano.on ? tracks.piano.vol : 0;
+  const comp = ctx.createDynamicsCompressor();
+  pianoBus.connect(comp).connect(ctx.destination);
+  const n = 12, re = new Float32Array(n), im = new Float32Array(n);
+  [0, 1, .5, .32, .18, .12, .07, .05, .03, .02, .015, .01].forEach((a, i) => im[i] = a);
+  wave = ctx.createPeriodicWave(re, im);
+  return ctx.resume();
+}
+
+const voices = new Set();
+function pianoNote(pitch, when, dur, vel = 100, bus = pianoBus) {
+  const osc = ctx.createOscillator(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+  osc.setPeriodicWave(wave);
+  osc.frequency.value = hz(pitch);
+  lp.type = "lowpass";
+  lp.frequency.setValueAtTime(Math.min(16000, hz(pitch) * 10), when);
+  lp.frequency.setTargetAtTime(hz(pitch) * 3, when, 0.3);
+  const peak = 0.22 * (vel / 127);
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(peak, when + 0.005);
+  g.gain.setTargetAtTime(peak * 0.25, when + 0.005, 0.6);
+  g.gain.setTargetAtTime(0, when + dur, 0.06);
+  osc.connect(lp).connect(g).connect(bus);
+  osc.start(when);
+  osc.stop(when + dur + 0.5);
+  const v = { osc, g };
+  voices.add(v);
+  osc.onended = () => voices.delete(v);
+}
+function silence() {
+  if (!ctx) return;
+  for (const v of voices) { v.g.gain.cancelScheduledValues(ctx.currentTime); v.g.gain.setTargetAtTime(0, ctx.currentTime, 0.02); v.osc.stop(ctx.currentTime + 0.1); }
+  voices.clear();
+}
+function audition(pitch, dur = 0.6) {
+  ensureCtx().then(() => {
+    const bus = ctx.createGain(); bus.gain.value = 1; bus.connect(ctx.destination);
+    pianoNote(pitch, ctx.currentTime + 0.01, dur, 105, bus);
+    pressed = { pitch, until: performance.now() + dur * 1000 };
+  });
+}
+
+// ---------- transport ----------
+// The AudioContext is the master clock; the <audio> stems are nudged back into sync if they drift.
+let playing = false, rate = 1, pausedAt = 0, ctxStart = 0, offsetAtStart = 0, nextIdx = 0, timer = null;
+const stems = () => [tracks.vocals, tracks.backing].filter(t => t.ok);
+
+function songTime() {
+  if (!playing) return pausedAt;
+  return offsetAtStart + (ctx.currentTime - ctxStart) * rate;
+}
+function firstNoteAfter(t) {
+  let lo = 0, hi = notes.length;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (notes[mid].start < t) lo = mid + 1; else hi = mid; }
+  return lo;
+}
+function applyVolumes() {
+  for (const k of ["vocals", "backing"]) { const t = tracks[k]; if (t.el) t.el.volume = t.on ? t.vol : 0; }
+  if (pianoBus) pianoBus.gain.setTargetAtTime(tracks.piano.on ? tracks.piano.vol : 0, ctx.currentTime, 0.02);
+}
+async function play() {
+  await ensureCtx();
+  const t = pausedAt >= D.duration - 0.05 ? 0 : pausedAt;
+  applyVolumes();
+  const els = stems();
+  els.forEach(x => { x.el.currentTime = t; x.el.playbackRate = rate; x.el.preservesPitch = true; });
+  await Promise.all(els.map(x => x.el.play().catch(() => {})));
+  offsetAtStart = t; ctxStart = ctx.currentTime;
+  nextIdx = firstNoteAfter(t - 0.01);
+  playing = true;
+  $("play").textContent = "❚❚ Pause";
+  timer = setInterval(schedule, 25);
+}
+function pause() {
+  pausedAt = songTime();
+  playing = false;
+  clearInterval(timer);
+  [tracks.vocals, tracks.backing].forEach(x => x.el && x.el.pause());
+  silence();
+  $("play").textContent = "▶ Play";
+}
+function seek(t) {
+  t = Math.max(0, Math.min(D.duration, t));
+  if (playing) { pause(); pausedAt = t; play(); } else { pausedAt = t; }
+  if (followOn()) ensureVisible(t, true);
+}
+function schedule() {
+  const now = songTime();
+  if (now >= D.duration) { pause(); pausedAt = D.duration; return; }
+  for (const s of stems()) if (!s.el.seeking && Math.abs(s.el.currentTime - now) > 0.12) s.el.currentTime = now;
+  while (nextIdx < notes.length && notes[nextIdx].start < now + 0.15) {
+    const n = notes[nextIdx++];
+    if (n.end < now) continue;
+    const delay = Math.max(0, n.start - now) / rate;
+    const dur = (n.end - Math.max(n.start, now)) / rate;
+    pianoNote(n.pitch, ctx.currentTime + delay, dur, n.velocity);
+  }
+}
+
+$("play").onclick = () => playing ? pause() : play();
+$("rewind").onclick = () => seek(0);
+$("speed").onchange = e => { rate = +e.target.value; if (playing) { pause(); play(); } };
+document.querySelectorAll(".track").forEach(el => {
+  const t = tracks[el.dataset.track], [cb, vol] = el.querySelectorAll("input");
+  cb.checked = t.on; vol.value = t.vol; el.classList.toggle("off", !t.on);
+  cb.onchange = () => { t.on = cb.checked; el.classList.toggle("off", !t.on); applyVolumes(); };
+  vol.oninput = () => { t.vol = +vol.value; applyVolumes(); };
+});
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+  if (e.code === "Space") { e.preventDefault(); playing ? pause() : play(); }
+  if (e.code === "ArrowLeft") seek(songTime() - 5);
+  if (e.code === "ArrowRight") seek(songTime() + 5);
+});
+
+// ---------- piano roll ----------
+const cv = $("roll"), g2 = cv.getContext("2d"), tip = $("tip");
+const KW = 58;
+let pps = 140, viewStart = 0, pressed = null, hoverNote = null;
+const followOn = () => $("follow").checked;
+const pitches = notes.map(n => n.pitch);
+const voicedCurve = curve.filter(v => v != null);
+const pct = (arr, p) => { const s = [...arr].sort((a, b) => a - b); return s[Math.floor((s.length - 1) * p)]; };
+let minP = Math.floor(Math.min(...pitches, pct(voicedCurve, 0.01) ?? 60)) - 2;
+let maxP = Math.ceil(Math.max(...pitches, pct(voicedCurve, 0.99) ?? 72)) + 2;
+if (!isFinite(minP)) { minP = 55; maxP = 80; }
+
+function size() {
+  const dpr = window.devicePixelRatio || 1, r = cv.getBoundingClientRect();
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  g2.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+const W = () => cv.getBoundingClientRect().width, H = () => cv.getBoundingClientRect().height;
+const rowH = () => H() / (maxP - minP + 1);
+const yOf = m => (maxP - m) * rowH() + rowH() / 2;
+const xOf = t => KW + (t - viewStart) * pps;
+const tOf = x => viewStart + (x - KW) / pps;
+const pOf = y => Math.round(maxP - (y - rowH() / 2) / rowH());
+const clampView = () => { viewStart = Math.max(0, Math.min(viewStart, D.duration - (W() - KW) / pps + 0.5)); };
+function ensureVisible(t, center) {
+  const span = (W() - KW) / pps;
+  if (center) viewStart = t - span * 0.3;
+  else if (t > viewStart + span * 0.85 || t < viewStart) viewStart = t - span * 0.15;
+  clampView();
+}
+function noteAt(t) { const i = firstNoteAfter(t + 1e-6) - 1; return i >= 0 && notes[i].end > t ? i : -1; }
+
+function draw() {
+  const w = W(), h = H(), rh = rowH(), t = songTime();
+  if (playing && followOn()) ensureVisible(t, false);
+  const c = { bw: css("--row-white"), bb: css("--row-black"), cl: css("--c-line"), note: css("--note"),
+    act: css("--note-active"), curve: css("--curve"), ph: css("--playhead"), kw: css("--key-white"),
+    kb: css("--key-black"), hit: css("--key-hit"), muted: css("--muted"), line: css("--line") };
+  g2.clearRect(0, 0, w, h);
+  for (let m = minP; m <= maxP; m++) {
+    const y = (maxP - m) * rh;
+    g2.fillStyle = isBlack(m) ? c.bb : c.bw; g2.fillRect(KW, y, w - KW, rh);
+    if (m % 12 === 0) { g2.fillStyle = c.cl; g2.fillRect(KW, y + rh - 1, w - KW, 1); }
+  }
+  // second grid
+  g2.fillStyle = c.line; g2.font = "10px system-ui"; g2.textBaseline = "top";
+  const step = pps > 80 ? 1 : pps > 30 ? 5 : 10;
+  for (let s = Math.ceil(viewStart / step) * step; s < tOf(w); s += step) {
+    const x = xOf(s); g2.fillRect(x, 0, 1, h);
+    g2.fillStyle = c.muted; g2.fillText(fmt(s).replace(/\.0$/, ""), x + 3, 3); g2.fillStyle = c.line;
+  }
+  // notes
+  const cur = noteAt(t);
+  const i0 = Math.max(0, firstNoteAfter(viewStart - 10));
+  for (let i = i0; i < notes.length && notes[i].start < tOf(w); i++) {
+    const n = notes[i]; if (n.end < viewStart) continue;
+    const x = xOf(n.start), y = (maxP - n.pitch) * rh;
+    g2.globalAlpha = 0.45 + 0.55 * (n.velocity / 127);
+    g2.fillStyle = i === cur ? c.act : c.note;
+    g2.beginPath(); g2.roundRect(x, y + 1, Math.max(2, (n.end - n.start) * pps - 1), rh - 2, Math.min(4, rh / 3)); g2.fill();
+    g2.globalAlpha = 1;
+    if (i === hoverNote) { g2.strokeStyle = c.curve; g2.lineWidth = 1.5; g2.stroke(); }
+    if ((n.end - n.start) * pps > 30 && rh >= 10) {
+      g2.fillStyle = "#fff"; g2.font = `600 ${Math.min(11, rh - 2)}px system-ui`; g2.textBaseline = "middle";
+      g2.fillText(n.name, x + 4, y + rh / 2);
+    }
+  }
+  // pitch curve
+  if ($("showCurve").checked) {
+    g2.strokeStyle = c.curve; g2.lineWidth = 1.4; g2.globalAlpha = 0.85; g2.beginPath();
+    const f0 = Math.max(0, Math.floor(viewStart * fps)), f1 = Math.min(curve.length, Math.ceil(tOf(w) * fps));
+    let pen = false;
+    for (let f = f0; f < f1; f++) {
+      const m = curve[f];
+      if (m == null) { pen = false; continue; }
+      const x = xOf(f / fps), y = yOf(m);
+      pen ? g2.lineTo(x, y) : g2.moveTo(x, y); pen = true;
+    }
+    g2.stroke(); g2.globalAlpha = 1;
+  }
+  // playhead
+  const px = xOf(t);
+  if (px >= KW) { g2.fillStyle = c.ph; g2.fillRect(px - 1, 0, 2, h); }
+  // keyboard
+  const sounding = new Set();
+  if (cur >= 0 && (playing || true)) sounding.add(notes[cur].pitch);
+  if (pressed && performance.now() < pressed.until) sounding.add(pressed.pitch);
+  for (let m = minP; m <= maxP; m++) {
+    const y = (maxP - m) * rh;
+    g2.fillStyle = sounding.has(m) ? c.hit : isBlack(m) ? c.kb : c.kw;
+    g2.fillRect(0, y, isBlack(m) ? KW * 0.62 : KW, rh - (isBlack(m) ? 0 : 0.5));
+    if (isBlack(m)) { g2.fillStyle = c.kw; g2.fillRect(KW * 0.62, y, KW * 0.38, rh - 0.5); }
+    if (m % 12 === 0 || rh >= 14) {
+      g2.fillStyle = sounding.has(m) ? "#fff" : isBlack(m) ? c.muted : "#555";
+      g2.font = `${m % 12 === 0 ? 600 : 400} ${Math.min(10, rh - 1)}px system-ui`; g2.textBaseline = "middle";
+      g2.fillText(noteName(m), KW - 26, y + rh / 2);
+    }
+  }
+  g2.fillStyle = c.line; g2.fillRect(KW - 1, 0, 1, h);
+}
+
+function updateNow() {
+  const t = songTime();
+  $("time").textContent = `${fmt(t)} / ${fmt(D.duration)}`;
+  const m = curve[Math.round(t * fps)];
+  const i = noteAt(t);
+  if (m != null) {
+    const near = Math.round(m), cents = (m - near) * 100;
+    $("nowNote").textContent = noteName(near);
+    $("nowHz").textContent = `sung: ${hz(m).toFixed(1)} Hz  (${cents >= 0 ? "+" : ""}${cents.toFixed(0)}¢)`;
+    const nd = $("needle"); nd.style.left = (50 + cents) + "%";
+    nd.style.background = Math.abs(cents) < 15 ? css("--good") : Math.abs(cents) < 30 ? css("--warn") : css("--bad");
+  } else {
+    $("nowNote").textContent = "–"; $("nowHz").textContent = "sung: –";
+  }
+  $("nowMidi").textContent = i >= 0 ? `transcribed: ${notes[i].name} · ${notes[i].note_hz.toFixed(1)} Hz · MIDI ${notes[i].pitch}` : "transcribed: –";
+  highlightRow(i);
+}
+
+function frame() { draw(); updateNow(); requestAnimationFrame(frame); }
+
+// ---------- pointer ----------
+function hit(e) {
+  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  const t = tOf(x), p = pOf(y);
+  let idx = -1;
+  if (x > KW) for (let i = Math.max(0, firstNoteAfter(t - 10)); i < notes.length && notes[i].start <= t; i++)
+    if (notes[i].pitch === p && notes[i].end >= t) idx = i;
+  return { x, y, t, p, idx };
+}
+cv.addEventListener("pointerdown", e => {
+  const h = hit(e);
+  if (h.x <= KW) { audition(h.p); return; }
+  if (h.idx >= 0) { const n = notes[h.idx]; audition(n.pitch, Math.min(1.5, n.end - n.start)); seek(n.start); return; }
+  seek(h.t);
+});
+cv.addEventListener("pointermove", e => {
+  const h = hit(e); hoverNote = h.idx;
+  let text;
+  if (h.x <= KW) text = `${noteName(h.p)} · ${hz(h.p).toFixed(1)} Hz · click to play`;
+  else if (h.idx >= 0) { const n = notes[h.idx];
+    text = `${n.name} · sung ${n.hz.toFixed(1)} Hz (${n.cents >= 0 ? "+" : ""}${n.cents.toFixed(0)}¢) · ${fmt(n.start)} · ${(n.end - n.start).toFixed(2)}s`; }
+  else { const m = curve[Math.round(h.t * fps)];
+    text = `${fmt(h.t)}` + (m != null ? ` · sung ${noteName(Math.round(m))} ${hz(m).toFixed(1)} Hz` : ""); }
+  tip.textContent = text; tip.style.display = "block";
+  const wr = cv.parentElement.getBoundingClientRect(), tw = tip.offsetWidth;
+  tip.style.left = Math.min(h.x + 14, wr.width - tw - 6) + "px"; tip.style.top = (h.y + 14) + "px";
+});
+cv.addEventListener("pointerleave", () => { tip.style.display = "none"; hoverNote = null; });
+cv.addEventListener("wheel", e => {
+  e.preventDefault();
+  if (e.ctrlKey || e.metaKey) {
+    const r = cv.getBoundingClientRect(), t = tOf(e.clientX - r.left);
+    pps = Math.max(20, Math.min(600, pps * Math.exp(-e.deltaY * 0.004)));
+    viewStart = t - (e.clientX - r.left - KW) / pps; $("zoom").value = pps;
+  } else {
+    viewStart += (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) / pps;
+  }
+  clampView();
+}, { passive: false });
+$("zoom").oninput = e => { const mid = tOf((W() + KW) / 2); pps = +e.target.value; viewStart = mid - (W() - KW) / 2 / pps; clampView(); };
+
+// ---------- table ----------
+const tbody = $("rows");
+const centsClass = c => Math.abs(c) < 15 ? "c-good" : Math.abs(c) < 30 ? "c-warn" : "c-bad";
+tbody.innerHTML = notes.map((n, i) =>
+  `<tr data-i="${i}"><td>${i + 1}</td><td>${fmt(n.start)}</td><td>${(n.end - n.start).toFixed(2)}</td><td><b>${n.name}</b></td>` +
+  `<td>${n.hz.toFixed(1)}</td><td>${n.note_hz.toFixed(1)}</td><td class="${centsClass(n.cents)}">${n.cents >= 0 ? "+" : ""}${n.cents.toFixed(0)}</td><td>${n.velocity}</td></tr>`
+).join("");
+tbody.onclick = e => { const tr = e.target.closest("tr"); if (!tr) return; const n = notes[+tr.dataset.i]; audition(n.pitch, Math.min(1.5, n.end - n.start)); seek(n.start); };
+let curRow = -1;
+function highlightRow(i) {
+  if (i === curRow) return;
+  tbody.children[curRow]?.classList.remove("cur");
+  curRow = i;
+  const tr = tbody.children[i];
+  if (tr) { tr.classList.add("cur"); if (playing && followOn()) {
+    const wrap = tbody.closest(".table-wrap");
+    wrap.scrollTop = tr.offsetTop - wrap.clientHeight / 2; } }
+}
+
+window.addEventListener("resize", size);
+size(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>

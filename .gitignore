@@ -26,3 +26,8 @@ separated/
 
 
 
+output/
+models/*
+!models/note_onsets.joblib
+!models/note_onsets.json
+songs/

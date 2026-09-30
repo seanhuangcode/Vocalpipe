@@ -1,0 +1,1689 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vocalpipe</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Crect x='1' y='1' width='34' height='34' rx='10' fill='%236f5fae' stroke='%232b2240' stroke-width='2'/%3E%3Crect x='6' y='19' width='12' height='7' rx='3.5' fill='%23f3d27f' stroke='%232b2240' stroke-width='1.6'/%3E%3Crect x='18' y='9' width='12' height='7' rx='3.5' fill='%236cc4a5' stroke='%232b2240' stroke-width='1.6'/%3E%3Cpath d='M5 22.5H14C17.5 22.5 17.5 12.5 21 12.5H31' fill='none' stroke='%232b2240' stroke-width='4.2' stroke-linecap='round'/%3E%3Cpath d='M5 22.5H14C17.5 22.5 17.5 12.5 21 12.5H31' fill='none' stroke='%23fffaf3' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Fraunces:opsz,wght,SOFT,WONK@9..144,600..900,0..100,0..1&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #fcf5eb; --paper-2: #fffaf3; --card: #fffdf9; --ink: #2b2240; --ink-2: #6b6180; --line: #ece0cc;
+  --tomato: #e8806f; --orange: #e9a56f; --sun: #f3d27f; --mint: #6cc4a5; --sky: #7eafe3; --grape: #9a8ad8; --gum: #e5a3c4;
+  --brand: #6f5fae;
+  --shadow: 3px 3px 0 var(--ink); --shadow-lg: 4px 4px 0 var(--ink); --b: 2px solid var(--ink);
+  --display: "Bricolage Grotesque", ui-rounded, system-ui, sans-serif;
+  --mono: "Space Mono", ui-monospace, Menlo, monospace;
+  --fancy: "Fraunces", Georgia, serif;  /* soft, slightly wonky serif for titles and big numbers */
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  color: var(--ink); font: 15px/1.45 var(--display);
+  background-color: var(--paper);
+  background-image: radial-gradient(rgba(43, 34, 64, .07) 1.2px, transparent 1.3px);
+  background-size: 22px 22px;
+  min-height: 100vh;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--sky); outline-offset: 3px; }
+.app { max-width: 1440px; margin: 0 auto; padding: 22px 20px 40px; display: flex; flex-direction: column; gap: 20px; }
+
+/* ---------- headline type ---------- */
+.logo .word, .shelf-head h2, #prep h3, .tile .big, .score, dialog h2, .pop {
+  font-family: var(--fancy); font-variation-settings: "SOFT" 100, "WONK" 1; }
+.logo .word { font-weight: 800; letter-spacing: -.8px; }
+.shelf-head h2, #prep h3, dialog h2 { font-weight: 800; letter-spacing: -.3px; }
+.tile .big, .score { font-weight: 900; letter-spacing: -1px; }
+
+/* ---------- chunky primitives ---------- */
+.card { background: var(--card); border: var(--b); border-radius: 20px; box-shadow: var(--shadow); }
+.btn { border: var(--b); border-radius: 14px; background: var(--card); box-shadow: 3px 3px 0 var(--ink);
+  padding: 8px 16px; font-weight: 700; transition: transform .08s, box-shadow .08s; white-space: nowrap; }
+.btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+.btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--ink); }
+.btn:disabled { opacity: .5; cursor: default; transform: none; box-shadow: 3px 3px 0 var(--ink); }
+.btn.tomato { background: var(--tomato); color: var(--ink); }
+.btn.mint { background: var(--mint); }
+.btn.sun { background: var(--sun); }
+.btn.sky { background: var(--sky); color: #fff; }
+.chip { display: inline-flex; align-items: center; gap: 5px; border: 2px solid var(--ink); border-radius: 999px;
+  padding: 1px 9px; font: 700 11px/1.6 var(--mono); background: var(--card); }
+
+/* ---------- header + search ---------- */
+header { display: grid; grid-template-columns: auto 1fr auto; gap: 22px; align-items: center; }
+.logo { font-weight: 800; font-size: 33px; letter-spacing: -1.2px; line-height: 1; color: var(--ink); display: flex; align-items: center; gap: 10px; }
+.logo .mark { flex: none; }
+.logo .word { text-shadow: 2px 2px 0 rgba(43, 34, 64, .1); padding-bottom: 4px; }
+.logo .pipe { color: var(--brand); position: relative; }
+.logo .pipe::after { content: ""; position: absolute; left: 1px; right: -1px; bottom: -6px; height: 7px; background-size: 14px 7px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='7' viewBox='0 0 14 7'%3E%3Cpath d='M0 3.5Q3.5 0 7 3.5T14 3.5' fill='none' stroke='%23e8806f' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"); }
+.tagline { font: 700 11px/1.3 var(--mono); color: var(--ink-2); text-transform: uppercase; letter-spacing: .08em; margin-top: 6px; }
+.search { position: relative; }
+.search-box { display: flex; align-items: center; gap: 10px; background: var(--card); border: var(--b); border-radius: 18px;
+  box-shadow: var(--shadow-lg); padding: 0 16px; height: 58px; }
+.search-box svg { flex: none; }
+.search-box input { flex: 1; border: 0; outline: 0; background: transparent; font-size: 19px; font-weight: 600; min-width: 0; }
+.search-box input::placeholder { color: #a497b5; font-weight: 500; }
+.search-box:focus-within { box-shadow: 6px 6px 0 var(--grape); }
+.results { position: absolute; left: 0; right: 0; top: calc(100% + 12px); z-index: 20; max-height: 70vh; overflow: auto;
+  padding: 10px; display: none; }
+.results.open { display: block; }
+.results h4 { margin: 8px 10px 6px; font: 700 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--ink-2); }
+.result { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 10px; border-radius: 14px; }
+.result:hover { background: var(--paper); }
+.result .art { width: 48px; height: 48px; border-radius: 10px; border: 2px solid var(--ink); object-fit: cover;
+  display: grid; place-items: center; font-size: 22px; background: var(--sun); }
+.result b { display: block; font-size: 15px; line-height: 1.2; }
+.result small { color: var(--ink-2); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.results .empty { padding: 14px 12px; color: var(--ink-2); }
+.upload { font-weight: 700; }
+
+/* ---------- shelf ---------- */
+.shelf-head { display: flex; align-items: baseline; gap: 12px; margin: 0 4px -6px; }
+.shelf-head h2 { margin: 0; font-size: 22px; letter-spacing: -.5px; }
+.shelf { display: flex; gap: 18px; overflow-x: auto; padding: 8px 4px 16px; scroll-snap-type: x proximity; }
+.song-card { flex: none; width: 250px; scroll-snap-align: start; text-align: left; border: var(--b); border-radius: 18px;
+  box-shadow: var(--shadow); padding: 10px; display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: center;
+  transition: transform .15s, box-shadow .15s; }
+.song-card .meta { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.song-card .chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+.song-card:nth-child(6n+1) { background: color-mix(in srgb, var(--sun) 55%, white); transform: rotate(-.6deg); }
+.song-card:nth-child(6n+2) { background: color-mix(in srgb, var(--sky) 45%, white); transform: rotate(.5deg); }
+.song-card:nth-child(6n+3) { background: color-mix(in srgb, var(--gum) 45%, white); transform: rotate(-.4deg); }
+.song-card:nth-child(6n+4) { background: color-mix(in srgb, var(--mint) 45%, white); transform: rotate(.6deg); }
+.song-card:nth-child(6n+5) { background: color-mix(in srgb, var(--orange) 45%, white); transform: rotate(-.5deg); }
+.song-card:nth-child(6n+6) { background: color-mix(in srgb, var(--grape) 40%, white); transform: rotate(.4deg); }
+.song-card:hover { transform: rotate(0) translateY(-3px); box-shadow: var(--shadow-lg); }
+.song-card.selected { transform: rotate(0) translateY(-3px); box-shadow: 5px 5px 0 var(--ink); outline: 2px solid var(--ink); outline-offset: 3px; }
+.song-card .cover { width: 64px; height: 64px; border-radius: 12px; border: 2px solid var(--ink); background: var(--card);
+  display: grid; place-items: center; font-size: 30px; overflow: hidden; }
+.song-card .cover img { width: 100%; height: 100%; object-fit: cover; }
+.song-card b { font-size: 15px; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.song-card small { font-size: 12px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.add-card { flex: none; width: 170px; border: 2.5px dashed var(--ink); border-radius: 18px; background: transparent;
+  display: grid; place-items: center; text-align: center; font-weight: 700; padding: 12px; cursor: pointer; }
+.add-card:hover { background: var(--paper-2); }
+.add-card .plus { font-size: 28px; line-height: 1; }
+
+/* ---------- processing ---------- */
+#prep { padding: 26px 28px; display: none; position: relative; overflow: hidden; }
+#prep.show { display: block; }
+#prep h3 { margin: 0 0 6px; font-size: 26px; letter-spacing: -.6px; }
+#prepText { font-size: 17px; color: var(--ink-2); }
+.bar { height: 22px; border: var(--b); border-radius: 999px; background: var(--paper-2); overflow: hidden; margin: 18px 0 14px; }
+.bar i { display: block; height: 100%; width: 0; transition: width .5s ease;
+  background: repeating-linear-gradient(-45deg, var(--sun) 0 12px, var(--orange) 12px 24px); background-size: 34px 34px;
+  animation: stripes 1s linear infinite; border-right: 2.5px solid var(--ink); }
+@keyframes stripes { to { background-position: 34px 0; } }
+#prepLog { font: 12px/1.5 var(--mono); color: var(--ink-2); white-space: pre-wrap; max-height: 100px; overflow: auto; margin: 10px 0 0; }
+.bob { position: absolute; right: 26px; top: 18px; font-size: 54px; animation: bob 1.2s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-5px) rotate(4deg); } }
+
+/* ---------- finding songs ---------- */
+.header-actions { display: flex; gap: 10px; }
+.suggest-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.add-card small { display: block; font: 600 11px/1.3 var(--mono); color: var(--ink-2); margin-top: 4px; }
+#browseDlg { background: var(--card); text-align: left; width: min(780px, 94vw); max-height: 86vh; padding: 22px 24px; }
+#browseDlg[open] { display: flex; flex-direction: column; gap: 12px; }
+.browse-head { display: flex; align-items: center; gap: 12px; }
+.browse-head h2 { flex: 1; margin: 0; }
+.browse-filter { width: 100%; border: var(--b); border-radius: 14px; padding: 10px 14px; font-size: 16px; background: var(--paper-2); outline: 0; }
+.browse-list { overflow: auto; flex: 1; min-height: 220px; }
+.browse-list h4, .results h4 { margin: 10px 10px 6px; font: 700 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--ink-2); }
+.result .art img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+.browse-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border-top: 2px dashed var(--line); padding-top: 12px; }
+#dropZone { position: fixed; inset: 0; z-index: 80; display: none; place-items: center; background: rgba(43, 34, 64, .35); }
+#dropZone.show { display: grid; }
+#dropZone .box { background: var(--card); border: 3px dashed var(--ink); border-radius: 24px; padding: 40px 56px; text-align: center;
+  box-shadow: 8px 8px 0 var(--ink); font: 800 30px/1.2 var(--fancy); font-variation-settings: "SOFT" 100, "WONK" 1; }
+#dropZone .box small { display: block; font: 600 14px/1.4 var(--display); color: var(--ink-2); margin-top: 8px; }
+
+/* ---------- one-tap sing ---------- */
+.sing-overlay { position: absolute; inset: 0; display: grid; place-items: center; z-index: 3; pointer-events: none; }
+.sing-overlay > * { pointer-events: auto; }
+#singBtn { font: 800 28px/1 var(--fancy); font-variation-settings: "SOFT" 100, "WONK" 1; padding: 16px 34px 14px; border-radius: 999px;
+  background: var(--tomato); box-shadow: 5px 5px 0 var(--ink); }
+#singBtn small { display: block; font: 700 11px/1.4 var(--mono); letter-spacing: .04em; margin-top: 6px; }
+#countdown { font: 900 130px/1 var(--fancy); font-variation-settings: "SOFT" 100, "WONK" 1; color: var(--card);
+  -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; text-shadow: 6px 6px 0 var(--ink); pointer-events: none; }
+#countdown.tick { animation: tick .6s ease-out; }
+@keyframes tick { 0% { transform: scale(1.6); opacity: 0; } 30% { transform: scale(1); opacity: 1; } 100% { transform: scale(.92); } }
+.partial-badge { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 2; white-space: nowrap;
+  font: 700 12px/1 var(--mono); background: var(--card); border: var(--b); border-radius: 999px; padding: 7px 12px; box-shadow: 2px 2px 0 var(--ink); }
+
+/* ---------- stage ---------- */
+#stage { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+#stage.hidden, #controls.hidden { display: none; }
+.lane-wrap { position: relative; overflow: hidden; padding: 0; background: var(--paper-2); }
+canvas#lane { display: block; width: 100%; height: 470px; }
+.pop { position: absolute; pointer-events: none; font: 800 18px/1 var(--display); padding: 6px 12px; border: var(--b);
+  border-radius: 12px; box-shadow: 3px 3px 0 var(--ink); animation: pop 1s ease-out forwards; white-space: nowrap; }
+.pop.perfect { background: var(--mint); } .pop.good { background: var(--sun); } .pop.miss { background: var(--tomato); }
+.pop.bonus { background: var(--sky); font-size: 14px; } .pop.phrase { background: var(--card); font-size: 16px; }
+.lane-tools { position: absolute; top: 10px; right: 12px; display: flex; gap: 8px; z-index: 2; }
+.lane-tools .btn { padding: 5px 12px; font-size: 13px; box-shadow: 2px 2px 0 var(--ink); }
+.badge { position: absolute; top: 10px; left: 46px; z-index: 2; font: 700 11px/1 var(--mono); text-transform: uppercase;
+  letter-spacing: .1em; background: var(--ink); color: var(--paper); padding: 6px 10px; border-radius: 999px; }
+@keyframes pop {
+  0% { transform: translate(-50%, 0) scale(.5) rotate(-4deg); opacity: 0; }
+  18% { transform: translate(-50%, -18px) scale(1.08) rotate(2deg); opacity: 1; }
+  30% { transform: translate(-50%, -22px) scale(1) rotate(-2deg); }
+  100% { transform: translate(-50%, -64px) scale(.95) rotate(-2deg); opacity: 0; }
+}
+.hud { display: flex; flex-direction: column; gap: 16px; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tile { border: var(--b); border-radius: 16px; box-shadow: var(--shadow); padding: 10px 12px 12px; background: var(--card); transition: background .15s; }
+.tile .lbl { font: 700 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em; }
+.tile .big { font-size: 42px; font-weight: 800; letter-spacing: -1.5px; line-height: 1.05; margin-top: 4px; }
+.tile .hz { font: 12px/1.2 var(--mono); opacity: .75; min-height: 15px; }
+.tuner { padding: 14px 16px 12px; }
+.tuner-track { position: relative; height: 18px; border: var(--b); border-radius: 999px; overflow: visible;
+  background: linear-gradient(90deg, var(--tomato) 0 22%, var(--sun) 22% 40%, var(--mint) 40% 60%, var(--sun) 60% 78%, var(--tomato) 78%); }
+.tuner-track i { position: absolute; top: 50%; left: 50%; width: 26px; height: 26px; border: var(--b); border-radius: 50%; background: var(--card);
+  transform: translate(-50%, -50%); transition: left .06s linear; box-shadow: 2px 2px 0 var(--ink); }
+.tuner.idle .tuner-track i { opacity: .35; }
+.tuner-labels { display: flex; justify-content: space-between; font: 700 11px/1 var(--mono); margin-top: 10px; color: var(--ink-2); }
+.bubble { position: relative; background: var(--card); border: var(--b); border-radius: 16px; padding: 12px 14px; font-size: 19px; font-weight: 800;
+  box-shadow: var(--shadow); min-height: 54px; letter-spacing: -.3px; }
+.bubble::before { content: ""; position: absolute; left: 26px; top: -12px; width: 18px; height: 18px; background: inherit;
+  border-left: var(--b); border-top: var(--b); transform: rotate(45deg); }
+.bubble.good { background: var(--mint); } .bubble.warn { background: var(--sun); }
+.bubble .steps { font-size: 16px; line-height: 1.75; }
+.bubble .steps .done { opacity: .45; text-decoration: line-through; }
+.bubble .small { font-size: 15px; font-weight: 700; }
+.bubble button { margin-top: 10px; font-size: 14px; }
+.stars { font-size: 22px; letter-spacing: 2px; color: var(--sun); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; margin-top: 2px; }
+.stars .off { color: rgba(255, 255, 255, .35); -webkit-text-stroke: 0; }
+.scorecard { background: color-mix(in srgb, var(--grape) 88%, white); color: #fff; transform: rotate(-.6deg); padding: 14px 18px 16px; }
+.scorecard .lbl { font: 700 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em; }
+.score:not(:empty) { min-height: 64px; }
+.score.empty { -webkit-text-stroke: 0; color: rgba(255, 255, 255, .55); }
+.score { font-size: 64px; font-weight: 800; letter-spacing: -3px; line-height: 1; -webkit-text-stroke: 1.5px var(--ink); paint-order: stroke fill; color: var(--sun); }
+.tally { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.tally .chip { color: var(--ink); }
+.songinfo { font: 12px/1.5 var(--mono); color: var(--ink-2); padding: 0 4px; }
+
+/* ---------- controls ---------- */
+#controls { display: flex; flex-direction: column; gap: 12px; padding: 14px 18px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; }
+.row + .row { border-top: 2px dashed var(--line); padding-top: 12px; }
+.group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.spacer { flex: 1; }
+.btn.on { background: var(--mint); }
+.btn.icon { padding: 7px 12px; font-size: 14px; }
+.switch.small { font: 700 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; gap: 6px; }
+.switch.small input { width: 34px; height: 20px; }
+.switch.small input::after { width: 12px; height: 12px; }
+.switch.small input:checked::after { left: 15px; }
+kbd { font: 700 12px/1 var(--mono); border: 2px solid var(--ink); border-bottom-width: 3px; border-radius: 6px; padding: 2px 6px; background: var(--card); }
+.play { width: 64px; height: 64px; border-radius: 50%; font-size: 24px; padding: 0; display: grid; place-items: center; }
+.time { font: 700 15px/1 var(--mono); min-width: 120px; }
+.mic { display: inline-flex; align-items: center; gap: 10px; }
+.level { width: 70px; height: 12px; border: 2px solid var(--ink); border-radius: 999px; overflow: hidden; background: var(--paper-2); }
+.level i { display: block; height: 100%; width: 0; background: var(--mint); }
+.ctl { display: flex; flex-direction: column; gap: 4px; font: 700 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--ink-2); }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 110px; height: 10px; border: 2px solid var(--ink); border-radius: 999px; background: var(--paper-2); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--sun); border: 2.5px solid var(--ink); cursor: pointer; }
+input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--sun); border: 2.5px solid var(--ink); }
+.seg { display: inline-flex; border: var(--b); border-radius: 12px; overflow: hidden; box-shadow: 2px 2px 0 var(--ink); }
+.seg button { border: 0; background: var(--card); padding: 6px 12px; font-weight: 700; }
+.seg button + button { border-left: 2px solid var(--ink); }
+.seg button.on { background: var(--grape); color: #fff; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; }
+.switch input { appearance: none; width: 44px; height: 26px; border: var(--b); border-radius: 999px; background: var(--paper-2); position: relative; cursor: pointer; margin: 0; }
+.switch input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: var(--ink); transition: left .15s; }
+.switch input:checked { background: var(--mint); }
+.switch input:checked::after { left: 20px; }
+.hint { font: 12px/1.3 var(--mono); color: var(--ink-2); }
+.btn.sm { padding: 1px 11px; border-radius: 10px; font-size: 17px; box-shadow: 2px 2px 0 var(--ink); }
+.keyer { display: inline-flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; }
+#keyVal { min-width: 104px; text-align: center; font: 700 13px/1 var(--mono); color: var(--ink); }
+.acts { display: flex; align-items: center; gap: 10px; }
+.buy { font: 700 12px/1 var(--mono); color: var(--ink-2); }
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(120px); background: var(--ink); color: var(--paper);
+  padding: 10px 18px; border-radius: 14px; font-weight: 700; transition: transform .25s; z-index: 50; }
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+dialog { border: var(--b); border-radius: 24px; box-shadow: 8px 8px 0 var(--ink); background: var(--sun); color: var(--ink); padding: 28px 34px; text-align: center; }
+dialog::backdrop { background: rgba(30, 20, 51, .45); }
+dialog:not([open]) { display: none; }
+dialog[open] { display: block; }
+dialog.fallback { position: fixed; inset: 0; margin: auto; height: fit-content; z-index: 60; box-shadow: 8px 8px 0 var(--ink), 0 0 0 100vmax rgba(30, 20, 51, .45); }
+dialog h2 { margin: 0; font-size: 34px; letter-spacing: -1px; }
+dialog .score { font-size: 96px; color: var(--card); }
+dialog p { font: 13px/1.5 var(--mono); }
+dialog .stars { font-size: 34px; color: #fffaf3; -webkit-text-stroke: 1.5px var(--ink); }
+dialog .stars .off { color: rgba(43, 34, 64, .15); -webkit-text-stroke: 0; }
+dialog .summary { text-align: left; background: var(--card); border: var(--b); border-radius: 14px; padding: 12px 16px; margin: 14px 0;
+  font: 13px/1.7 var(--mono); max-width: 440px; }
+#help { background: var(--card); text-align: left; }
+#help table { border-collapse: collapse; margin: 14px 0; }
+#help td { padding: 5px 12px 5px 0; font-size: 15px; }
+
+@media (max-width: 960px) {
+  header { grid-template-columns: 1fr; }
+  #stage { grid-template-columns: 1fr; }
+  .hud { display: grid; grid-template-columns: 1fr 1fr; }
+  canvas#lane { height: 380px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <div class="logo" aria-label="vocalpipe">
+        <svg class="mark" width="38" height="38" viewBox="0 0 38 38" aria-hidden="true">
+          <rect x="3.5" y="3.5" width="33" height="33" rx="10" fill="var(--ink)"/>
+          <rect x="1" y="1" width="33" height="33" rx="10" fill="var(--brand)" stroke="var(--ink)" stroke-width="2"/>
+          <rect x="5.5" y="18.5" width="12" height="7" rx="3.5" fill="var(--sun)" stroke="var(--ink)" stroke-width="1.6"/>
+          <rect x="17.5" y="8.5" width="12" height="7" rx="3.5" fill="var(--mint)" stroke="var(--ink)" stroke-width="1.6"/>
+          <path d="M4.5 22H13.5C17 22 17 12 20.5 12H30.5" fill="none" stroke="var(--ink)" stroke-width="4.2" stroke-linecap="round"/>
+          <path d="M4.5 22H13.5C17 22 17 12 20.5 12H30.5" fill="none" stroke="#fffaf3" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span class="word">vocal<span class="pipe">pipe</span></span>
+      </div>
+      <div class="tagline">sing anything · scored live</div>
+    </div>
+    <div class="search">
+      <label class="search-box">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.5-4.5"/></svg>
+        <input id="q" type="search" placeholder="Search any song or artist…" autocomplete="off" aria-label="Search songs">
+      </label>
+      <div class="results card" id="results" role="listbox"></div>
+    </div>
+    <div class="header-actions">
+      <button class="btn" id="browseBtn" title="Every song already on this Mac">📂 My music</button>
+      <label class="btn upload" title="Or drop songs anywhere on the page">＋ Add files<input type="file" id="fileIn" multiple accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.aac,.aif,.aiff,.opus" hidden></label>
+    </div>
+  </header>
+
+  <div>
+    <div class="shelf-head"><h2>Your songs</h2><span class="hint" id="shelfHint"></span></div>
+    <div class="shelf" id="shelf"></div>
+  </div>
+
+  <section id="prep" class="card">
+    <div class="bob" aria-hidden="true">🎙️</div>
+    <h3 id="prepTitle">Let's get this one ready</h3>
+    <div id="prepText">We'll pull the vocals off the band, listen to every note and write down the melody. Takes about half a minute.</div>
+    <div class="bar"><i id="prepBar"></i></div>
+    <button class="btn tomato" id="processBtn">Get it ready →</button>
+    <pre id="prepLog"></pre>
+  </section>
+
+  <section id="stage" class="hidden">
+    <div class="card lane-wrap" id="laneWrap"><canvas id="lane"></canvas>
+      <span class="badge" id="loopBadge" hidden>⟲ practice loop</span>
+      <div class="lane-tools"><button class="btn" id="skipIntro" hidden>Skip intro ⏭</button></div>
+      <div class="sing-overlay"><button class="btn" id="singBtn" hidden>🎤 Sing<small>mic on · 3-2-1 · straight to the first verse</small></button>
+        <div id="countdown" hidden></div></div>
+      <span class="partial-badge" id="partialBadge" hidden></span>
+    </div>
+    <aside class="hud">
+      <div class="tiles">
+        <div class="tile" id="tTile"><div class="lbl">Sing</div><div class="big" id="tNote">–</div><div class="hz" id="tHz"></div></div>
+        <div class="tile" id="yTile"><div class="lbl">You</div><div class="big" id="yNote">–</div><div class="hz" id="yHz"></div></div>
+      </div>
+      <div class="card tuner idle" id="tuner">
+        <div class="tuner-track"><i id="needle"></i></div>
+        <div class="tuner-labels"><span>♭ flat</span><span id="centsLbl">0¢</span><span>sharp ♯</span></div>
+      </div>
+      <div class="bubble" id="hint">Turn on the mic and hit play!</div>
+      <div class="card scorecard">
+        <div class="lbl" id="scoreLbl">Score</div>
+        <div class="score empty" id="score">—</div>
+        <div class="stars" id="stars"></div>
+        <div class="tally">
+          <span class="chip" style="background:var(--mint)">★ <b id="nPerfect">0</b> perfect</span>
+          <span class="chip" style="background:var(--sun)"><b id="nGood">0</b> good</span>
+          <span class="chip" style="background:var(--tomato)"><b id="nMiss">0</b> miss</span>
+          <span class="chip">streak <b id="streak">0</b> · best <b id="bestStreak">0</b></span>
+        </div>
+      </div>
+      <div class="songinfo" id="songInfo"></div>
+    </aside>
+  </section>
+
+  <footer class="card hidden" id="controls">
+    <div class="row">
+      <button class="btn tomato play" id="playBtn" aria-label="Play" title="Play / pause (Space)">▶</button>
+      <span class="time" id="time">0:00 / 0:00</span>
+      <span class="group" role="group" aria-label="Practice">
+        <button class="btn icon" id="prevPhrase" title="Previous phrase ( [ )">⏮ Phrase</button>
+        <button class="btn icon" id="loopBtn" title="Loop the current phrase until you nail it (L)">⟲ Loop phrase</button>
+        <button class="btn icon" id="hearBtn" title="Hear the phrase played on piano first (H)">♪ Hear it</button>
+        <button class="btn icon" id="nextPhrase" title="Next phrase ( ] )">Phrase ⏭</button>
+      </span>
+      <button class="btn icon" id="restartBtn" title="Restart and reset score (R)">↺ Restart</button>
+      <span class="mic"><button class="btn" id="micBtn" title="Microphone (M)">🎤 Mic off</button><span class="level" title="Mic level"><i id="level"></i></span></span>
+      <span class="spacer"></span>
+      <button class="btn icon" id="helpBtn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">?</button>
+    </div>
+    <div class="row">
+      <label class="ctl">Backing<input type="range" id="volBacking" min="0" max="1" step="0.01" value="0.85"></label>
+      <label class="ctl">Guide vocal<input type="range" id="volGuide" min="0" max="1" step="0.01" value="0.2"></label>
+      <label class="ctl">Piano guide<input type="range" id="volPiano" min="0" max="1" step="0.01" value="0"></label>
+      <label class="ctl">Speed <span id="speedVal">100%</span><input type="range" id="speed" min="0.5" max="1.25" step="0.05" value="1"></label>
+      <span class="ctl">Key <span class="keyer"><button class="btn sm" id="keyDown" aria-label="Lower the key">−</button><b id="keyVal">original</b><button class="btn sm" id="keyUp" aria-label="Raise the key">+</button></span></span>
+      <span class="ctl">Difficulty<span class="seg" id="difficulty">
+        <button data-v="easy" title="±75 cents, very relaxed timing">Easy</button><button data-v="normal" class="on" title="±50 cents, relaxed timing; split-second notes are bonus">Normal</button><button data-v="hard" title="±35 cents, tight timing, every note counts">Hard</button></span></span>
+      <span class="ctl">Lane<span class="seg" id="laneMode">
+        <button data-v="pages" class="on" title="Notes stay still and fill the lane one phrase at a time; a cursor moves across">Pages</button><button data-v="scroll" title="Notes glide past a fixed playhead">Scroll</button></span></span>
+      <label class="switch" title="Count a note as hit if you sing it in any octave"><input type="checkbox" id="octaveFree" checked> Any octave</label>
+      <span class="ctl" title="How late your voice reaches the app. Auto learns it from your singing.">Timing <span id="latencyVal">0 ms</span>
+        <span class="group"><input type="range" id="latency" min="-300" max="600" step="10" value="0" aria-label="Timing offset">
+        <label class="switch small"><input type="checkbox" id="autoSync" checked> auto</label></span></span>
+    </div>
+  </footer>
+</div>
+
+<dialog id="resultsDlg">
+  <h2 id="rTitle">Nailed it!</h2>
+  <div class="stars" id="rStars"></div>
+  <div class="score" id="rScore">–</div>
+  <p id="rDetail"></p>
+  <div class="summary" id="rSummary"></div>
+  <button class="btn tomato" id="rAgain">Sing it again</button>
+  <button class="btn" id="rPractice" hidden>Practice my toughest phrase</button>
+  <button class="btn" id="rClose">Close</button>
+</dialog>
+<dialog id="help">
+  <h2>Shortcuts</h2>
+  <table>
+    <tr><td><kbd>Space</kbd></td><td>play / pause</td></tr>
+    <tr><td><kbd>M</kbd></td><td>mic on / off</td></tr>
+    <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>previous / next phrase</td></tr>
+    <tr><td><kbd>L</kbd></td><td>loop the current phrase</td></tr>
+    <tr><td><kbd>H</kbd></td><td>hear the phrase on piano</td></tr>
+    <tr><td><kbd>G</kbd> <kbd>P</kbd></td><td>guide vocal / piano guide on-off</td></tr>
+    <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>back / forward 5 s</td></tr>
+    <tr><td><kbd>R</kbd></td><td>restart</td></tr>
+  </table>
+  <p>Tip: a note counts if you're on pitch for most of it — coming in a little early or late is fine.
+  Split-second notes in fast runs are left out, so you only sing the notes that really matter.</p>
+  <button class="btn tomato" id="helpClose">Got it</button>
+</dialog>
+<dialog id="browseDlg">
+  <div class="browse-head"><h2>Your music</h2><span class="hint" id="browseCount"></span><button class="btn" id="browseClose">Close</button></div>
+  <input class="browse-filter" id="browseFilter" type="search" placeholder="Filter by song, artist or album…" autocomplete="off" aria-label="Filter songs">
+  <div class="browse-list results" id="browseList"></div>
+  <div class="browse-foot">
+    <label class="btn">📁 Pick a folder…<input type="file" id="folderIn" webkitdirectory multiple hidden></label>
+    <label class="btn">＋ Pick files…<input type="file" id="browseFiles" multiple accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.aac,.aif,.aiff,.opus" hidden></label>
+    <span class="hint">or drop songs anywhere on the page · mp3, m4a, wav, flac, ogg</span>
+  </div>
+</dialog>
+<div id="dropZone"><div class="box">Drop to add 🎤<small>mp3, m4a, wav, flac — they'll be ready to sing in seconds</small></div></div>
+<div id="toast" role="status"></div>
+
+<audio id="aBacking" preload="auto"></audio>
+<audio id="aGuide" preload="auto"></audio>
+
+<script>
+// ============ helpers ============
+const $ = id => document.getElementById(id);
+const NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+// Boomwhacker-style colour per pitch class: every note name has its own colour.
+const PC_COLORS = ["#e8806f","#ea9178","#e9a56f","#eeb679","#f3d27f","#6cc4a5","#66b8b3","#7eafe3","#8b99df","#9a8ad8","#b294d6","#e5a3c4"];
+const pcColor = m => PC_COLORS[((Math.round(m) % 12) + 12) % 12];
+const noteName = m => NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+const toMidi = f => 69 + 12 * Math.log2(f / 440);
+const fmt = t => { t = Math.max(0, t || 0); const m = Math.floor(t / 60); return m + ":" + String(Math.floor(t % 60)).padStart(2, "0"); };
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("vocalpipe." + k) ?? localStorage.getItem("beltit." + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("vocalpipe." + k, JSON.stringify(v)); } catch {} },
+};
+// <dialog> with a fallback for browsers that don't support showModal()
+function openDialog(d) { if (typeof d.showModal === "function") d.showModal(); else { d.setAttribute("open", ""); d.classList.add("fallback"); } }
+function closeDialog(d) { if (typeof d.close === "function") d.close(); else { d.removeAttribute("open"); d.classList.remove("fallback"); } }
+function toast(text, ms = 3200) { const t = $("toast"); t.textContent = text; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), ms); }
+
+// ============ finding songs: search, your music, files ============
+let searchTimer = null, searchSeq = 0;
+const AUDIO_RE = /\.(mp3|m4a|wav|flac|ogg|aac|aiff?|opus)$/i;
+const fmtDur = s => s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "";
+const onShelf = path => songs.some(s => s.path === path);
+function libraryRow(x, attr) {
+  return `<div class="result"><div class="art"><img src="/api/art?path=${encodeURIComponent(x.path)}" alt="" loading="lazy" onerror="this.replaceWith('🎵')"></div>
+    <div><b>${esc(x.title)}</b><small>${esc([x.artist, fmtDur(x.duration), x.where].filter(Boolean).join(" · "))}</small></div>
+    <button class="btn mint" ${attr}>${onShelf(x.path) ? "Open" : "Sing it"}</button></div>`;
+}
+function closeResults() { $("results").classList.remove("open"); }
+
+$("q").addEventListener("input", e => {
+  clearTimeout(searchTimer);
+  const q = e.target.value.trim();
+  if (q.length < 2) { showSuggestions(); return; }
+  searchTimer = setTimeout(() => runSearch(q), 280);
+});
+$("q").addEventListener("keydown", e => {
+  if (e.key === "Escape") { closeResults(); e.target.blur(); }
+  if (e.key === "Enter") $("results").querySelector("[data-lib],[data-free],[data-pre]")?.click();  // sing the top result
+});
+$("q").addEventListener("focus", () => {
+  if ($("q").value.trim().length >= 2) { if ($("results").innerHTML) $("results").classList.add("open"); }
+  else showSuggestions();
+});
+document.addEventListener("click", e => { if (!e.target.closest(".search")) closeResults(); });
+document.addEventListener("keydown", e => {  // "/" jumps to search from anywhere
+  if (e.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName) && !document.querySelector("dialog[open]")) {
+    e.preventDefault(); $("q").focus();
+  }
+});
+
+// Clicking into search shows the songs already on this Mac straight away.
+async function showSuggestions() {
+  const seq = ++searchSeq, box = $("results");
+  const r = await (await fetch("/api/library?limit=6")).json();
+  if (seq !== searchSeq || $("q").value.trim().length >= 2) return;
+  let html = r.songs.length
+    ? `<h4>On your Mac · ${r.total} song${r.total === 1 ? "" : "s"}</h4>` + r.songs.map((x, i) => libraryRow(x, `data-lib="${i}"`)).join("")
+    : `<div class="empty">${r.ready ? "No songs found on this Mac yet." : "Looking through your music…"}</div>`;
+  html += `<div class="empty suggest-foot"><button class="btn" id="browseAll">Browse all ${r.total || ""} →</button>
+    <span>or drop an mp3 anywhere · type to search online</span></div>`;
+  box.innerHTML = html; box.classList.add("open");
+  box.querySelectorAll("[data-lib]").forEach(b => b.onclick = () => addSong({ source: "library", ...r.songs[+b.dataset.lib] }, b));
+  $("browseAll").onclick = () => { closeResults(); openBrowse(); };
+}
+
+async function runSearch(q) {
+  const seq = ++searchSeq, box = $("results");
+  box.innerHTML = `<div class="empty">Digging through the crates for “${esc(q)}”…</div>`;
+  box.classList.add("open");
+  const r = await (await fetch(`/api/search?q=${encodeURIComponent(q)}`)).json();
+  if (seq !== searchSeq) return;
+  let html = "";
+  if (r.library.length) {
+    html += `<h4>On your Mac · full song</h4>` + r.library.map((x, i) => libraryRow(x, `data-lib="${i}"`)).join("");
+  }
+  if (r.free?.length) {
+    html += `<h4>Free full songs · Creative Commons (ccMixter)</h4>`;
+    html += r.free.map((x, i) => `<div class="result"><div class="art" style="background:var(--mint)">🎧</div>
+      <div><b>${esc(x.title)}</b><small>${esc(x.artist)} · ${esc(x.length)} · ${esc(x.license)}</small></div>
+      <button class="btn mint" data-free="${i}">Sing it</button></div>`).join("");
+  }
+  if (r.previews.length) {
+    html += `<h4>Apple Music previews · 30 sec</h4>`;
+    html += r.previews.map((x, i) => `<div class="result"><img class="art" src="${esc(x.artwork)}" alt="">
+      <div><b>${esc(x.title)}</b><small>${esc(x.artist)} · ${esc(x.album)}</small></div>
+      <div class="acts">${x.buy ? `<a class="buy" href="${esc(x.buy)}" target="_blank" rel="noopener" title="Buy it, and once it's in your Music library it shows up above as a full song">buy full ↗</a>` : ""}
+      <button class="btn sun" data-pre="${i}">Sing clip</button></div></div>`).join("");
+  }
+  if (!html) html = `<div class="empty">No matches — try the artist's name too.</div>`;
+  if (r.error) html += `<div class="empty">${esc(r.error)}</div>`;
+  box.innerHTML = html;
+  box.querySelectorAll("[data-lib]").forEach(b => b.onclick = () => addSong({ source: "library", ...r.library[+b.dataset.lib] }, b));
+  box.querySelectorAll("[data-pre]").forEach(b => b.onclick = () => addSong({ source: "preview", ...r.previews[+b.dataset.pre] }, b));
+  box.querySelectorAll("[data-free]").forEach(b => b.onclick = () => addSong({ source: "free", ...r.free[+b.dataset.free] }, b));
+}
+
+async function addSong(body, btn) {
+  btn.disabled = true; btn.textContent = "Adding…";
+  const r = await fetch("/api/add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json();
+  if (!r.ok) { toast(j.error || "Couldn't add that one"); btn.disabled = false; btn.textContent = "Try again"; return; }
+  closeResults(); $("q").value = ""; closeDialog($("browseDlg"));
+  await refreshSongs(j.song);
+}
+
+// ---- browse everything on this Mac, or a folder you pick ----
+let browseSongs = [], picked = [];
+async function openBrowse() {
+  openDialog($("browseDlg"));
+  $("browseFilter").value = "";
+  $("browseList").innerHTML = `<div class="empty">Looking through your music…</div>`;
+  const r = await (await fetch("/api/library?limit=1000")).json();
+  browseSongs = r.songs;
+  $("browseCount").textContent = r.ready ? `${r.total} song${r.total === 1 ? "" : "s"} found on this Mac` : "Still looking through your music…";
+  renderBrowse();
+  $("browseFilter").focus();
+}
+function renderBrowse() {
+  const words = $("browseFilter").value.toLowerCase().split(/\s+/).filter(Boolean);
+  const match = text => words.every(w => text.toLowerCase().includes(w));
+  const mine = browseSongs.filter(x => match(`${x.title} ${x.artist} ${x.album} ${x.where}`));
+  const folder = picked.filter(f => match(f.webkitRelativePath || f.name));
+  let html = "";
+  if (folder.length) {
+    html += `<h4>From the folder you picked · ${folder.length}</h4>` + folder.slice(0, 200).map(f => `<div class="result"><div class="art">🎵</div>
+      <div><b>${esc(f.name.replace(AUDIO_RE, ""))}</b><small>${esc((f.webkitRelativePath || "").split("/").slice(0, -1).join("/"))} · ${(f.size / 1e6).toFixed(1)} MB</small></div>
+      <button class="btn mint" data-pick="${picked.indexOf(f)}">Sing it</button></div>`).join("");
+    html += `<h4>Everything on this Mac</h4>`;
+  }
+  html += mine.length ? mine.slice(0, 400).map(x => libraryRow(x, `data-path="${esc(x.path)}"`)).join("")
+    : `<div class="empty">${words.length ? "No songs match — try another word, or pick a folder below." : "No songs found on this Mac — pick a folder or drop files below."}</div>`;
+  $("browseList").innerHTML = html;
+  $("browseList").querySelectorAll("[data-path]").forEach(b => b.onclick = () => {
+    const x = browseSongs.find(s => s.path === b.dataset.path);
+    addSong({ source: "library", ...x }, b);
+  });
+  $("browseList").querySelectorAll("[data-pick]").forEach(b => b.onclick = () => uploadFiles([picked[+b.dataset.pick]]));
+}
+$("browseBtn").onclick = openBrowse;
+$("browseClose").onclick = () => closeDialog($("browseDlg"));
+$("browseFilter").oninput = renderBrowse;
+$("folderIn").onchange = e => {
+  picked = [...e.target.files].filter(f => AUDIO_RE.test(f.name)).sort((a, b) => a.name.localeCompare(b.name));
+  e.target.value = "";
+  if (!picked.length) toast("No songs in that folder");
+  renderBrowse();
+};
+
+// ---- add files: picker, many at once, or drop them anywhere ----
+async function uploadFiles(files) {
+  files = [...files].filter(f => AUDIO_RE.test(f.name) || f.type.startsWith("audio/"));
+  if (!files.length) return toast("Those don't look like songs — try mp3, m4a, wav or flac");
+  let first = null;
+  for (const [k, f] of files.entries()) {
+    toast(files.length > 1 ? `Adding ${k + 1} of ${files.length}: ${f.name}` : `Adding ${f.name}…`, 60000);
+    const r = await fetch("/api/upload", { method: "POST", headers: { "X-Filename": encodeURIComponent(f.name) }, body: f });
+    const j = await r.json();
+    if (!r.ok) { toast(j.error || `Couldn't add ${f.name}`); continue; }
+    first ??= j.song;
+  }
+  if (!first) return;
+  toast(files.length > 1 ? `Added ${files.length} songs — starting with the first` : "Added — getting it ready", 2500);
+  closeDialog($("browseDlg"));
+  await refreshSongs(first);
+}
+$("fileIn").onchange = e => { uploadFiles(e.target.files); e.target.value = ""; };
+$("browseFiles").onchange = e => { uploadFiles(e.target.files); e.target.value = ""; };
+let dragDepth = 0;
+const hasFiles = e => [...(e.dataTransfer?.types || [])].includes("Files");
+window.addEventListener("dragenter", e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; $("dropZone").classList.add("show"); });
+window.addEventListener("dragover", e => { if (hasFiles(e)) e.preventDefault(); });
+window.addEventListener("dragleave", e => { if (hasFiles(e) && --dragDepth <= 0) { dragDepth = 0; $("dropZone").classList.remove("show"); } });
+window.addEventListener("drop", e => {
+  if (!hasFiles(e)) return;
+  e.preventDefault(); dragDepth = 0; $("dropZone").classList.remove("show");
+  uploadFiles(e.dataTransfer.files);
+});
+
+// ============ shelf & processing ============
+// A song becomes singable as soon as its quick preview (the first ~45 s) is ready; the rest
+// is processed while you sing and swapped in seamlessly.
+let songs = [], poll = null, shelfPoll = null, current = null, loadingStem = null;
+const busy = s => s.job && ["queued", "running", "preview"].includes(s.job.state);
+
+async function fetchSongs() {
+  songs = (await (await fetch("/api/songs")).json()).sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
+}
+async function refreshSongs(select) {
+  await fetchSongs();
+  const want = select || store.get("song", null);
+  current = songs.some(s => s.song === want) ? want : songs[0]?.song;
+  renderShelf();
+  if (current) chooseSong(current);
+  clearInterval(shelfPoll);
+  if (songs.some(busy)) shelfPoll = setInterval(async () => { await fetchSongs(); renderShelf(); if (!songs.some(busy)) clearInterval(shelfPoll); }, 1500);
+}
+function statusChip(s) {
+  if (s.processed) return `<span class="chip">✓ ready</span>`;
+  if (s.job?.state === "preview" || s.preview) return `<span class="chip">▶ singable</span>`;
+  if (s.job && ["queued", "running"].includes(s.job.state)) return `<span class="chip">⏳ ${Math.round((s.job.progress || 0) * 100)}%</span>`;
+  if (s.job?.state === "error") return `<span class="chip">⚠ failed</span>`;
+  return `<span class="chip">new</span>`;
+}
+function renderShelf() {
+  const shelf = $("shelf");
+  shelf.innerHTML = songs.map(s => `<button class="song-card${s.song === current ? " selected" : ""}" data-song="${esc(s.song)}">
+      <div class="cover">${s.artwork ? `<img src="${esc(s.artwork)}" alt="">` : ["🎤", "🎸", "🎹", "🥁", "🎺", "🎷"][s.song.length % 6]}</div>
+      <div class="meta"><b>${esc(s.title || s.song)}</b><small>${esc(s.artist || (s.source === "library" ? "from your Mac" : s.file))}</small>
+      <div class="chips">${statusChip(s)}${s.source === "preview" ? '<span class="chip">30s clip</span>' : s.source === "free" ? '<span class="chip">CC</span>' : ""}</div></div></button>`).join("") +
+    `<label class="add-card"><div><div class="plus">＋</div>Add songs<small>or drop them here</small><input type="file" multiple accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.aac,.aif,.aiff,.opus" hidden></div></label>`;
+  shelf.querySelectorAll(".song-card").forEach(c => c.onclick = () => chooseSong(c.dataset.song));
+  shelf.querySelector(".add-card input").onchange = e => { uploadFiles(e.target.files); e.target.value = ""; };
+  $("shelfHint").textContent = songs.length ? `${songs.filter(s => s.processed || s.preview).length} ready to sing` : "search, browse your music, or drop an mp3 to get started";
+}
+
+function chooseSong(stem) {
+  const s = songs.find(x => x.song === stem);
+  if (!s) return;
+  if (stem !== song?.stem) stopPlayback();
+  current = stem; store.set("song", stem);
+  renderShelf();
+  clearInterval(poll);
+  if (s.processed) {
+    $("prep").classList.remove("show");
+    if (song?.stem !== stem || song.partial) loadSong(stem); else showStage(true);
+    return;
+  }
+  if (!busy(s) && s.job?.state !== "error") processSong(stem);  // picking a song starts it — no extra click
+  if (s.preview || s.job?.state === "preview") {
+    $("prep").classList.remove("show");
+    if (song?.stem !== stem) loadSong(stem, { preview: true });
+  } else {
+    showStage(false); $("prep").classList.add("show");
+    $("prepTitle").textContent = `Getting “${s.title || stem}” ready`;
+    $("prepText").textContent = "Quick start: you can sing in about 5 seconds — the rest of the song loads while you sing.";
+    $("prepBar").style.width = "0"; $("prepLog").textContent = "";
+    $("processBtn").hidden = true;
+  }
+  watchJob(stem);
+}
+function showStage(on) { $("stage").classList.toggle("hidden", !on); $("controls").classList.toggle("hidden", !on); if (on) sizeCanvas(); }
+
+const STAGE_COPY = {
+  "Quick start": "Warming up the first verse…",
+  "Separating vocals": "Peeling the vocals off the band…",
+  "Tracking pitch": "Listening to every wobble and slide…",
+  "Finding notes": "Writing down the melody…",
+  "Rendering": "Warming up the stage…",
+  "Waiting for another song": "In the queue behind another song…",
+  "Starting": "Warming up…",
+};
+async function processSong(stem = current) {
+  const r = await fetch("/api/process", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ song: stem }) });
+  if (!r.ok) toast((await r.json()).error || "Couldn't start");
+}
+function watchJob(stem) {
+  clearInterval(poll);
+  const tick = async () => {
+    const st = await (await fetch(`/api/status?song=${encodeURIComponent(stem)}`)).json();
+    if (current !== stem) return clearInterval(poll);
+    if (st.state === "preview" || st.state === "done") {
+      if (song?.stem !== stem && loadingStem !== stem) {
+        $("prep").classList.remove("show");
+        await fetchSongs(); renderShelf();
+        await loadSong(stem, { preview: st.state === "preview" });
+      } else if (st.state === "done" && song?.stem === stem && song.partial) {
+        await upgradeToFull();
+      }
+      if (st.state === "done") { clearInterval(poll); await fetchSongs(); renderShelf(); }
+      else $("partialBadge").textContent = song?.waiting ? `Almost there — loading the rest of the song… ${Math.round((st.progress || 0) * 100)}%`
+        : `⚡ Quick start · the rest of the song is loading ${Math.round((st.progress || 0) * 100)}%`;
+      return;
+    }
+    const s = songs.find(x => x.song === stem) || {};
+    $("prepTitle").textContent = st.state === "error" ? `Hmm, “${s.title || stem}” didn't work` : `Getting “${s.title || stem}” ready`;
+    $("prepText").textContent = st.state === "error" ? "Check the log below — the file may be unreadable." :
+      `${STAGE_COPY[st.stage] || st.stage || ""} ${Math.round((st.progress || 0) * 100)}%`;
+    $("prepBar").style.width = ((st.progress || 0) * 100) + "%";
+    $("prepLog").textContent = st.state === "error" ? (st.log || []).join("\n") : "";
+    if (st.state === "error") { clearInterval(poll); $("processBtn").hidden = false; $("processBtn").disabled = false; }
+    if (st.state === "idle") processSong(stem);
+  };
+  tick(); poll = setInterval(tick, 700);
+}
+$("processBtn").onclick = () => { $("processBtn").hidden = true; processSong(current); watchJob(current); };
+
+// ============ loaded song ============
+let notes = [], baseNotes = [], song = null, minP = 55, maxP = 76, duration = 0, transpose = 0, rate = 1;
+let phrases = [], phraseOf = [];
+
+async function loadSong(stem, { preview = false } = {}) {
+  loadingStem = stem;
+  const base = preview ? "preview/" : "";
+  const data = await (await fetch(`/${encodeURIComponent(stem)}/${base}notes.json`)).json();
+  const meta = songs.find(x => x.song === stem) || {};
+  song = { stem, ...data, meta, partial: preview ? data.duration : null, waiting: false };
+  baseNotes = singable(data.notes);
+  duration = data.duration || (baseNotes.length ? baseNotes[baseNotes.length - 1].end + 2 : 0);
+  transpose = 0; applyTranspose();
+  setStemSources({ backing: base + "instrumental.wav", guide: base + "vocals.wav" });
+  songInfo();
+  syncBuf.length = 0; keyHintShown = false; setLoop(null);
+  $("keyDown").disabled = $("keyUp").disabled = preview;
+  $("keyDown").title = $("keyUp").title = preview ? "Available once the whole song has loaded" : "";
+  $("partialBadge").hidden = !preview;
+  if (preview) $("partialBadge").textContent = "⚡ Quick start · the rest of the song is loading";
+  showStage(true);
+  pausedAt = 0; resetScore(0);
+  loadingStem = null;
+  if (!preview) { const k = store.get(`key:${stem}`, 0); if (k) changeKey(k); }  // your key for this song
+}
+// Split-second notes (fast runs) are right only about half the time and sound wrong on the
+// piano guide, so leave them out: the note before carries through instead.
+const MIN_NOTE = 0.15;
+function singable(list) {
+  const out = [];
+  for (const n of list) {
+    if (n.end - n.start >= MIN_NOTE) { out.push({ ...n }); continue; }
+    const prev = out[out.length - 1];
+    if (prev && n.start - prev.end < 0.05) prev.end = Math.max(prev.end, n.end);
+  }
+  return out;
+}
+function songInfo() {
+  const meta = song.meta || {}, ps = baseNotes.map(n => n.pitch);
+  let credit = "";
+  if (meta.source === "free")
+    credit = ` · “${esc(meta.title)}” by ${esc(meta.artist)}, <a href="${esc(meta.license_url)}" target="_blank" rel="noopener">${esc(meta.license || "CC licence")}</a> · <a href="${esc(meta.page)}" target="_blank" rel="noopener">source ↗</a>`;
+  else if (meta.source === "preview" && meta.buy)
+    credit = ` · 30-sec preview · <a href="${esc(meta.buy)}" target="_blank" rel="noopener">get the full song ↗</a>`;
+  $("songInfo").innerHTML = `${baseNotes.length} notes · ${phrases.length} phrases · range ${noteName(Math.min(...ps))}–${noteName(Math.max(...ps))}` +
+    (song.autotune ? " · autotuned" : "") + (song.partial ? "" : ` · <a href="/${encodeURIComponent(song.stem)}/viewer.html" target="_blank">piano roll ↗</a>`) + credit;
+}
+// The whole song is ready: swap it in at the same spot, keeping the grades you've earned.
+async function upgradeToFull() {
+  const stem = song.stem;
+  const data = await (await fetch(`/${encodeURIComponent(stem)}/notes.json`)).json();
+  const resume = playing || song.waiting;
+  const t = playing ? songTime() : pausedAt;
+  if (playing) pause();
+  const oldNotes = notes, oldJudge = judge;
+  song = { ...song, ...data, partial: null, waiting: false };
+  baseNotes = singable(data.notes); duration = data.duration;
+  applyTranspose();
+  judge = notes.map(n => {
+    if (n.start >= t) return null;
+    const k = oldNotes.findIndex(o => Math.abs(o.start - n.start) < 0.08 && o.pitch === n.pitch);
+    return k >= 0 && oldJudge[k] ? oldJudge[k] : { skip: true };
+  });
+  nextJudge = judge.findIndex(st => !(st && (st.grade || st.skip)));
+  if (nextJudge < 0) nextJudge = notes.length;
+  setStemSources({ backing: "instrumental.wav", guide: "vocals.wav" });
+  await Promise.all([$("aBacking"), $("aGuide")].map(a => new Promise(res => {
+    if (a.readyState >= 1) return res();
+    a.addEventListener("loadedmetadata", res, { once: true }); setTimeout(res, 5000);
+  })));
+  $("keyDown").disabled = $("keyUp").disabled = false;
+  $("keyDown").title = $("keyUp").title = "";
+  $("partialBadge").hidden = true;
+  songInfo();
+  pausedAt = t;
+  if (resume) play();
+  toast("The whole song is ready ✓", 2000);
+}
+
+function setStemSources(paths) {
+  const base = `/${encodeURIComponent(song.stem)}/`;
+  $("aBacking").src = base + paths.backing;
+  $("aGuide").src = base + paths.guide;
+}
+// Transposed copy of the song's notes; everything (lane, HUD, scoring, piano) reads `notes`.
+function applyTranspose() {
+  notes = baseNotes.map(n => ({ ...n, pitch: n.pitch + transpose, name: noteName(n.pitch + transpose), note_hz: hz(n.pitch + transpose) }));
+  const ps = notes.map(n => n.pitch);
+  minP = Math.min(...ps, 60) - 3; maxP = Math.max(...ps, 64) + 3;
+  view.lo = null;
+  buildPhrases();
+  buildPages();
+  songFits = maxP - minP <= 20;  // small-range songs get one fixed vertical view
+  let keyName = "";
+  const m = /^([A-G]#?) (major|minor)$/.exec(song?.key || "");
+  if (m) keyName = NAMES[(NAMES.indexOf(m[1]) + transpose + 120) % 12] + (m[2] === "minor" ? "m" : "");
+  $("keyVal").textContent = transpose ? `${keyName} (${transpose > 0 ? "+" : ""}${transpose})` : `${keyName || "original"}`;
+}
+// Phrases = runs of notes separated by a real rest; the unit for looping and phrase scores.
+function buildPhrases() {
+  phrases = []; phraseOf = [];
+  notes.forEach((n, i) => {
+    const cur = phrases[phrases.length - 1];
+    if (!cur || n.start - notes[i - 1].end > 0.35 || n.end - cur.start > 14)
+      phrases.push({ index: phrases.length, start: n.start, end: n.end, first: i, last: i });
+    else { cur.end = Math.max(cur.end, n.end); cur.last = i; }
+    phraseOf[i] = phrases.length - 1;
+  });
+}
+// Where practice for a phrase starts: a short run-up, but never inside the previous phrase.
+function phraseStartAt(p) {
+  const prev = phrases[p.index - 1];
+  return Math.max(0, prev ? Math.max(prev.end + 0.05, p.start - 1.2) : p.start - 1.2);
+}
+// Inside a phrase: that one. In a gap: the next phrase once its run-up has begun, otherwise
+// the one you just finished (so hitting "loop" right after a stumble loops that phrase).
+function phraseAt(t) {
+  for (const p of phrases) {
+    if (t < p.end) return t >= phraseStartAt(p) || p.index === 0 ? p : phrases[p.index - 1];
+  }
+  return phrases[phrases.length - 1];
+}
+
+async function changeKey(delta) {
+  const next = Math.max(-6, Math.min(6, transpose + delta));
+  if (next === transpose || !song) return;
+  const was = playing; pause();
+  $("keyDown").disabled = $("keyUp").disabled = true;
+  toast(next ? `Moving everything ${Math.abs(next)} semitone${Math.abs(next) > 1 ? "s" : ""} ${next > 0 ? "up" : "down"}…` : "Back to the original key…", 15000);
+  try {
+    const r = await fetch(`/api/shift?song=${encodeURIComponent(song.stem)}&key=${next}`);
+    const paths = await r.json();
+    if (!r.ok) throw new Error(paths.error);
+    setStemSources(paths);
+    await Promise.all([$("aBacking"), $("aGuide")].map(a => new Promise(res => {
+      if (a.readyState >= 1) return res();
+      a.addEventListener("loadedmetadata", res, { once: true }); setTimeout(res, 8000);
+    })));
+    transpose = next; applyTranspose(); syncBuf.length = 0; resetScore(pausedAt);
+    store.set(`key:${song.stem}`, transpose);  // remember your key for this song
+    toast(transpose ? `Key changed: ${$("keyVal").textContent}` : "Original key");
+    if (was) play();
+  } catch (e) { toast(e.message || "Couldn't change the key"); }
+  $("keyDown").disabled = $("keyUp").disabled = false;
+}
+$("keyDown").onclick = () => changeKey(-1);
+$("keyUp").onclick = () => changeKey(+1);
+$("speed").oninput = e => {
+  rate = +e.target.value; $("speedVal").textContent = Math.round(rate * 100) + "%"; store.set("speed", rate);
+  if (playing) { pause(); play(); }
+};
+
+// ============ audio engine (AudioContext is the master clock) ============
+let ctx = null, pianoBus = null, wave = null;
+let playing = false, pausedAt = 0, ctxStart = 0, offsetAtStart = 0, nextSched = 0, schedTimer = null;
+const stems = () => [$("aBacking"), $("aGuide")].filter(a => a.readyState >= 1);
+
+function ensureCtx() {
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" });
+    pianoBus = ctx.createGain(); pianoBus.connect(ctx.destination);
+    const re = new Float32Array(12), im = new Float32Array(12);
+    [0, 1, .5, .32, .18, .12, .07, .05, .03, .02, .015, .01].forEach((a, i) => im[i] = a);
+    wave = ctx.createPeriodicWave(re, im);
+    applyVolumes();
+  }
+  return ctx.resume();
+}
+// Song time runs at `rate` × real time (the speed slider).
+function songTime() { return playing ? offsetAtStart + (ctx.currentTime - ctxStart) * rate : pausedAt; }
+function songAtCtx(ct) { return offsetAtStart + (ct - ctxStart) * rate; }
+const outLatency = () => ctx ? (ctx.outputLatency || 0) + (ctx.baseLatency || 0) : 0;
+// What the singer is hearing right now: audio leaves the speakers outLatency late.
+// The lane, HUD and scoring all use this so notes line up with what you hear.
+function heardTime() { return playing ? songTime() - outLatency() * rate : pausedAt; }
+
+function pianoNote(pitch, when, dur, vel, bus = pianoBus) {
+  const osc = ctx.createOscillator(), g = ctx.createGain();
+  osc.setPeriodicWave(wave); osc.frequency.value = hz(pitch);
+  const peak = 0.2 * (vel / 127);
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(peak, when + 0.006);
+  g.gain.setTargetAtTime(peak * 0.3, when + 0.006, 0.5);
+  g.gain.setTargetAtTime(0, when + dur, 0.05);
+  osc.connect(g).connect(bus);
+  osc.start(when); osc.stop(when + dur + 0.4);
+}
+function schedulePiano() {
+  const now = songTime();
+  if (song?.partial && now >= song.partial - 0.25) {  // end of the quick-start part: wait for the rest
+    pause(); song.waiting = true; $("partialBadge").hidden = false; return;
+  }
+  if (loop && now >= loop.end) { restartLoop(); return; }
+  if (now >= duration) { finishSong(); return; }
+  for (const a of stems()) if (!a.seeking && Math.abs(a.currentTime - now) > 0.12) a.currentTime = now;
+  if (+$("volPiano").value === 0) { while (nextSched < notes.length && notes[nextSched].start < now + 0.15) nextSched++; return; }
+  while (nextSched < notes.length && notes[nextSched].start < now + 0.15) {
+    const n = notes[nextSched++];
+    if (n.end < now) continue;
+    pianoNote(n.pitch, ctx.currentTime + Math.max(0, n.start - now) / rate, (n.end - Math.max(n.start, now)) / rate, n.velocity);
+  }
+}
+function applyVolumes() {
+  $("aBacking").volume = +$("volBacking").value;
+  $("aGuide").volume = +$("volGuide").value;
+  if (pianoBus) pianoBus.gain.value = +$("volPiano").value;
+}
+async function play() {
+  if (!notes.length) return;
+  await ensureCtx();
+  const t = pausedAt >= duration - 0.1 ? 0 : pausedAt;
+  if (t === 0 && !loop) resetScore(0);
+  applyVolumes();
+  const els = stems();
+  els.forEach(a => { a.currentTime = t; a.playbackRate = rate; a.preservesPitch = true; });
+  await Promise.all(els.map(a => a.play().catch(() => {})));
+  offsetAtStart = t; ctxStart = ctx.currentTime;
+  nextSched = firstNoteEndingAfter(t);
+  playing = true;
+  $("playBtn").textContent = "❚❚"; $("playBtn").setAttribute("aria-label", "Pause");
+  schedTimer = setInterval(schedulePiano, 25);
+}
+function pause() {
+  if (!playing) return;
+  pausedAt = songTime(); playing = false;
+  clearInterval(schedTimer);
+  [$("aBacking"), $("aGuide")].forEach(a => a.pause());
+  if (pianoBus) { pianoBus.disconnect(); pianoBus = ctx.createGain(); pianoBus.connect(ctx.destination); applyVolumes(); }
+  $("playBtn").textContent = "▶"; $("playBtn").setAttribute("aria-label", "Play");
+}
+function stopPlayback() { pause(); pausedAt = 0; }
+function seek(t) {
+  t = Math.max(0, Math.min(duration, t));
+  if (loop && (t < loop.start - 0.01 || t > loop.end)) setLoop(null);
+  const was = playing; pause(); pausedAt = t; resetScore(t); if (was) play();
+}
+
+// ============ practice: phrases, loop, hear it, skip intro ============
+let loop = null;
+function setLoop(p) {
+  const next = p && phrases[p.index + 1];
+  loop = p ? { start: phraseStartAt(p), end: Math.min(p.end + 0.5, next ? next.start - 0.05 : duration), phrase: p } : null;
+  $("loopBtn").classList.toggle("on", !!loop);
+  $("loopBadge").hidden = !loop;
+  if (loop) $("loopBadge").textContent = `⟲ practice loop · phrase ${p.index + 1}`;
+  $("scoreLbl").textContent = loop ? "This pass" : "Score";
+}
+function restartLoop() { pause(); pausedAt = loop.start; resetScore(loop.start); play(); }
+function toggleLoop() {
+  if (!notes.length) return;
+  if (loop) { setLoop(null); toast("Loop off — back to the full song"); return; }
+  const p = phraseAt(heardTime());
+  setLoop(p);
+  pause(); pausedAt = loop.start; resetScore(loop.start); play();
+  toast(`Looping phrase ${p.index + 1} — keep going until it's all green`);
+}
+function jumpPhrase(dir) {
+  if (!phrases.length) return;
+  const t = heardTime(), cur = phraseAt(t);
+  let k = cur.index;
+  if (dir > 0) k = t < phraseStartAt(cur) - 0.05 ? k : k + 1;  // not there yet: go to it; otherwise the next
+  else k = t > phraseStartAt(cur) + 0.5 ? k : k - 1;           // back to its start, or the one before
+  const p = phrases[Math.max(0, Math.min(phrases.length - 1, k))];
+  if (loop) setLoop(p);
+  seek(phraseStartAt(p));
+}
+async function hearPhrase() {
+  if (!notes.length) return;
+  const p = phraseAt(heardTime());
+  await ensureCtx();
+  pause();
+  const bus = ctx.createGain(); bus.gain.value = 0.9; bus.connect(ctx.destination);
+  const t0 = ctx.currentTime + 0.15;
+  for (let i = p.first; i <= p.last; i++) {
+    const n = notes[i];
+    pianoNote(n.pitch, t0 + (n.start - p.start) / rate, Math.max(0.08, (n.end - n.start) / rate), 110, bus);
+  }
+  pausedAt = phraseStartAt(p); resetScore(pausedAt);
+  toast(`♪ Phrase ${p.index + 1} — listen, then press play and sing it back`, 4000);
+}
+$("loopBtn").onclick = toggleLoop;
+$("hearBtn").onclick = hearPhrase;
+$("prevPhrase").onclick = () => jumpPhrase(-1);
+$("nextPhrase").onclick = () => jumpPhrase(1);
+$("skipIntro").onclick = () => seek(Math.max(0, notes[0].start - 2));
+
+function toggleVol(id) {
+  const el = $(id), v = +el.value;
+  if (v > 0) { el.dataset.prev = v; el.value = 0; } else { el.value = +el.dataset.prev || 0.6; }
+  applyVolumes(); store.set(id, +el.value);
+  toast(`${id === "volGuide" ? "Guide vocal" : "Piano guide"} ${+el.value ? "on" : "off"}`, 1200);
+}
+
+$("playBtn").onclick = () => playing ? pause() : playWithMic();
+// Play turns the mic on too (unless you switched it off yourself), so it's one tap to sing.
+async function playWithMic() {
+  if (!mic && store.get("micWanted", true)) await toggleMic();
+  return play();
+}
+let counting = false;
+async function startSinging() {
+  if (!notes.length || counting) return;
+  counting = true;
+  await ensureCtx();
+  if (!mic) await toggleMic();
+  if (pausedAt < 0.5 && !loop && notes[0].start > 8) { pausedAt = Math.max(0, notes[0].start - 3); resetScore(pausedAt); }
+  const el = $("countdown");
+  for (const n of ["3", "2", "1"]) {
+    el.textContent = n; el.hidden = false; el.classList.remove("tick"); void el.offsetWidth; el.classList.add("tick");
+    await new Promise(r => setTimeout(r, 600));
+  }
+  el.hidden = true; counting = false;
+  play();
+}
+$("singBtn").onclick = startSinging;
+$("restartBtn").onclick = () => { setLoop(null); seek(0); };
+["volBacking", "volGuide", "volPiano"].forEach(id => $(id).oninput = () => { applyVolumes(); store.set(id, +$(id).value); });
+$("helpBtn").onclick = () => openDialog($("help"));
+$("helpClose").onclick = () => closeDialog($("help"));
+document.addEventListener("keydown", e => {
+  if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName) || document.querySelector("dialog[open]")) return;
+  if (e.target.tagName === "BUTTON" && (e.code === "Space" || e.key === "Enter")) return;  // let the focused button act
+  if (e.key === "?") { openDialog($("help")); return; }
+  if (!notes.length || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (e.code === "Space") { e.preventDefault(); playing ? pause() : playWithMic(); }
+  else if (e.code === "ArrowLeft") seek(heardTime() - 5);
+  else if (e.code === "ArrowRight") seek(heardTime() + 5);
+  else if (k === "[") jumpPhrase(-1);
+  else if (k === "]") jumpPhrase(1);
+  else if (k === "l") toggleLoop();
+  else if (k === "h") hearPhrase();
+  else if (k === "m") toggleMic(true);
+  else if (k === "r") { setLoop(null); seek(0); }
+  else if (k === "g") toggleVol("volGuide");
+  else if (k === "p") toggleVol("volPiano");
+});
+
+// ============ microphone + pitch detection (YIN) ============
+let mic = null, analyser = null, micBuf = null, detectTimer = null, inputLatency = 0, lastCheck = 0;
+let tapNode = null, tapSink = null, tapLoaded = null;
+// Runs on the audio thread, which browsers never throttle: every 20 ms it hands the last
+// 2048 mic samples and their exact audio-clock time to the page. (A page timer would be
+// slowed to ~1/s when the tab is in the background, silently breaking the scoring.)
+const TAP_WORKLET = `
+class VocalpipeTap extends AudioWorkletProcessor {
+  constructor() { super(); this.buf = new Float32Array(2048); this.since = 0; this.hop = Math.round(sampleRate * 0.02); }
+  process(inputs) {
+    const ch = inputs[0] && inputs[0][0];
+    if (ch) {
+      this.buf.copyWithin(0, ch.length);
+      this.buf.set(ch, this.buf.length - ch.length);
+      this.since += ch.length;
+      if (this.since >= this.hop) {
+        this.since -= this.hop;
+        this.port.postMessage({ end: currentTime + ch.length / sampleRate, buf: this.buf.slice() });
+      }
+    }
+    return true;
+  }
+}
+registerProcessor("vocalpipe-tap", VocalpipeTap);`;
+const hist = [];
+const live = { midi: null, rms: 0, t: null, heardAt: 0 };
+const syncBuf = [];  // sung frames from the last ~25 s {t: song time before the timing offset, m: pitch, w: wall clock}
+
+async function toggleMic(byUser = false) {
+  if (mic) { stopMic(); if (byUser) store.set("micWanted", false); return; }
+  if (byUser) store.set("micWanted", true);
+  await ensureCtx();
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    inputLatency = stream.getAudioTracks()[0].getSettings().latency || 0.01;
+    await attachInput(ctx.createMediaStreamSource(stream), stream);
+  } catch (err) {
+    toast("Mic blocked — allow microphone access in your browser to get scored", 6000);
+  }
+}
+async function attachInput(node, stream = null) {
+  mic = { node, stream };
+  live.heardAt = performance.now();
+  $("micBtn").classList.add("mint"); $("micBtn").textContent = "🎤 Mic on";
+  try {
+    if (!ctx.audioWorklet) throw new Error("AudioWorklet unsupported");
+    tapLoaded ||= ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([TAP_WORKLET], { type: "application/javascript" })));
+    await tapLoaded;
+    if (!mic || mic.node !== node) return;  // mic was turned off while loading
+    tapNode = new AudioWorkletNode(ctx, "vocalpipe-tap");
+    tapSink = ctx.createGain(); tapSink.gain.value = 0;  // keeps the tap in the audio graph, silently
+    node.connect(tapNode); tapNode.connect(tapSink).connect(ctx.destination);
+    tapNode.port.onmessage = e => detect(e.data.buf, e.data.end);
+  } catch (err) {  // older browsers: sample the mic on a timer instead
+    analyser = ctx.createAnalyser(); analyser.fftSize = 2048; node.connect(analyser);
+    micBuf = new Float32Array(analyser.fftSize);
+    detectTimer = setInterval(() => { analyser.getFloatTimeDomainData(micBuf); detect(micBuf, ctx.currentTime); }, 20);
+  }
+}
+function stopMic() {
+  clearInterval(detectTimer);
+  if (tapNode) { tapNode.port.onmessage = null; tapNode.disconnect(); tapSink?.disconnect(); tapNode = tapSink = null; }
+  mic?.stream?.getTracks().forEach(t => t.stop());
+  mic?.node.disconnect();
+  mic = null; live.midi = null;
+  $("micBtn").classList.remove("mint"); $("micBtn").textContent = "🎤 Mic off";
+  $("level").style.width = "0";
+}
+$("micBtn").onclick = () => toggleMic(true);
+
+function yin(buf, sr, fmin = 70, fmax = 1100, threshold = 0.15) {
+  const W = buf.length >> 1;
+  const tauMin = Math.floor(sr / fmax), tauMax = Math.min(W - 1, Math.floor(sr / fmin));
+  const d = new Float32Array(tauMax + 2);
+  for (let tau = 1; tau <= tauMax + 1; tau++) {
+    let s = 0;
+    for (let i = 0; i < W; i++) { const x = buf[i] - buf[i + tau]; s += x * x; }
+    d[tau] = s;
+  }
+  // cumulative mean normalised difference
+  let run = 0;
+  const c = new Float32Array(tauMax + 2); c[0] = 1;
+  for (let tau = 1; tau <= tauMax + 1; tau++) { run += d[tau]; c[tau] = run ? d[tau] * tau / run : 1; }
+  let tau = -1;
+  for (let t = tauMin; t <= tauMax; t++) {
+    if (c[t] < threshold) { while (t + 1 <= tauMax && c[t + 1] < c[t]) t++; tau = t; break; }
+  }
+  if (tau < 0) return null;
+  const a = c[tau - 1], b = c[tau], g = c[tau + 1];
+  const shift = (a - 2 * b + g) ? (a - g) / (2 * (a - 2 * b + g)) : 0;
+  return { f: sr / (tau + shift), clarity: 1 - b };
+}
+
+// One 20 ms analysis frame: `buf` holds the latest mic samples, ending at audio-clock time `end`.
+function detect(buf, end) {
+  if (!mic) return;
+  let sum = 0; for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+  const rms = Math.sqrt(sum / buf.length);
+  live.rms = rms;
+  $("level").style.width = Math.min(100, Math.max(0, (20 * Math.log10(rms + 1e-9) + 60) / 50 * 100)) + "%";
+  const res = rms > 0.008 ? yin(buf, ctx.sampleRate) : null;
+  if (res) live.heardAt = performance.now();
+  hist.push(res ? toMidi(res.f) : null); if (hist.length > 3) hist.shift();
+  const vals = hist.filter(v => v != null);
+  live.midi = vals.length >= 2 ? vals.sort((x, y) => x - y)[vals.length >> 1] : null;
+  if (!playing) return;
+  // When was this voice sung, in song time? It was captured half a window ago plus
+  // input latency, in response to backing audio that left the speakers outLatency late.
+  const voiceAt = end - inputLatency - buf.length / 2 / ctx.sampleRate;
+  const raw = songAtCtx(voiceAt - outLatency());
+  const t = raw - (+$("latency").value) / 1000 * rate;
+  const dt = live.t == null ? 0.02 * rate : Math.max(0, Math.min(0.06, t - live.t));
+  live.t = t;
+  if (live.midi != null) syncBuf.push({ t: raw, m: live.midi, w: performance.now() });
+  // only recent singing counts, so a changed setup (e.g. wired instead of Bluetooth headphones) re-syncs quickly
+  while (syncBuf.length && (syncBuf[0].w < performance.now() - 25000 || syncBuf.length > 1500)) syncBuf.shift();
+  judgeFrame(t, live.midi, dt);
+  if (performance.now() - lastCheck > 3000) { lastCheck = performance.now(); autoSync(); suggestKey(); }
+}
+
+// ============ scoring ============
+// A note is fully hit once you've been on pitch for `need` of its length, anywhere from
+// `grace` s before it starts to `grace` s after it ends — people come in a little early or
+// late. Notes shorter than `bonusBelow` (split-second notes in runs) can only add points.
+// Checked with simulated singers: these rules move a good amateur from ~75% to ~96% on
+// Normal while monotone and random singing stay low (see the difficulty tooltips).
+const PRESETS = {
+  easy: { tol: 75, grace: 0.20, need: 0.5, bonusBelow: 0.15 },
+  normal: { tol: 50, grace: 0.15, need: 0.6, bonusBelow: 0.15 },
+  hard: { tol: 35, grace: 0.08, need: 0.7, bonusBelow: 0 },
+};
+const preset = () => PRESETS[$("difficulty").querySelector(".on")?.dataset.v] || PRESETS.normal;
+const tolerance = () => preset().tol;
+const fold = d => d - 12 * Math.round(d / 12);
+let judge = [], nextJudge = 0, trail = [], streak = 0, bestStreak = 0, phraseScores = [];
+const judged = { perfect: 0, good: 0, miss: 0, bonus: 0, weight: 0, acc: 0, cents: [] };
+const particles = [];
+
+function firstNoteEndingAfter(t) {
+  let lo = 0, hi = notes.length;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (notes[m].end <= t) lo = m + 1; else hi = m; }
+  return lo;
+}
+function firstNoteStartingAtOrAfter(t) {
+  let lo = 0, hi = notes.length;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (notes[m].start < t) lo = m + 1; else hi = m; }
+  return lo;
+}
+function noteAt(t) { const i = firstNoteEndingAfter(t); return i < notes.length && notes[i].start <= t ? i : -1; }
+function diffTo(m, target) { return $("octaveFree").checked ? fold(m - target) : m - target; }
+function resetScore(t) {
+  // notes already under way at t aren't judged: you didn't get a fair shot at them
+  const first = firstNoteStartingAtOrAfter(t);
+  judge = notes.map((_, i) => i < first ? { skip: true } : null);
+  nextJudge = first;
+  trail = []; streak = 0; particles.length = 0; phraseScores = []; live.t = null;
+  Object.assign(judged, { perfect: 0, good: 0, miss: 0, bonus: 0, weight: 0, acc: 0, cents: [] });
+  updateTally();
+}
+function judgeFrame(t, m, dt) {
+  const P = preset();
+  while (nextJudge < notes.length && notes[nextJudge].end + P.grace < t) finalize(nextJudge++);
+  let shown = m, hit = null, best = null;
+  for (let k = firstNoteEndingAfter(t - P.grace); k < notes.length && notes[k].start - P.grace <= t; k++) {
+    const st = judge[k] || (judge[k] = { hit: 0, marks: [], seen: 0 });
+    if (st.skip) continue;
+    st.seen++;
+    if (m == null) continue;
+    const d = diffTo(m, notes[k].pitch);
+    const dist = t < notes[k].start ? notes[k].start - t : t > notes[k].end ? t - notes[k].end : 0;
+    if (!best || dist < best.dist) best = { k, d, dist };
+    if (Math.abs(d) * 100 <= P.tol) {
+      st.hit += dt;
+      st.marks.push(Math.max(notes[k].start, Math.min(notes[k].end, t)));
+      hit = true;
+      if (dist === 0 && judged.cents.length < 20000) judged.cents.push(d * 100);
+    } else if (hit === null) hit = false;
+  }
+  if (m != null) {
+    if (best) shown = notes[best.k].pitch + best.d;
+    else if ($("octaveFree").checked) shown = m - 12 * Math.round((m - viewMid()) / 12);
+    trail.push({ t, m: shown, hit });
+    if (trail.length > 4000) trail.splice(0, 1000);
+  }
+}
+function finalize(i, quiet = false) {
+  const n = notes[i], P = preset(), st = judge[i];
+  if (!st || st.skip || !st.seen || st.grade) return;  // not observed (mic off / seek): don't judge
+  const dur = n.end - n.start;
+  st.acc = Math.min(1, st.hit / (dur * P.need));
+  st.grade = st.acc >= 0.8 ? "perfect" : st.acc >= 0.45 ? "good" : "miss";
+  st.bonus = dur < P.bonusBelow;
+  if (st.bonus) {
+    if (st.grade !== "miss") { judged.bonus++; if (mic && !quiet) celebrate(n, "bonus"); }
+  } else {
+    judged[st.grade]++;
+    judged.weight += dur; judged.acc += st.acc * dur;
+    streak = st.grade === "miss" ? 0 : streak + 1;
+    bestStreak = Math.max(bestStreak, streak);
+    if (!quiet && (mic && st.hit > 0 || st.grade === "miss")) celebrate(n, st.grade);
+  }
+  updateTally();
+  const p = phrases[phraseOf[i]];
+  if (p && p.last === i) phraseDone(p, quiet);
+}
+function phraseDone(p, quiet = false) {
+  let w = 0, a = 0;
+  for (let i = p.first; i <= p.last; i++) {
+    const st = judge[i];
+    if (st && st.grade && !st.bonus) { const d = notes[i].end - notes[i].start; w += d; a += st.acc * d; }
+  }
+  if (!w || !mic) return;
+  const pct = Math.round(100 * a / w);
+  phraseScores[p.index] = pct;
+  if (quiet) return;
+  const el = document.createElement("div");
+  el.className = "pop phrase";
+  el.innerHTML = `Phrase ${p.index + 1} · ${pct}% <span class="stars">${starsHtml(pct)}</span>`;
+  el.style.left = "50%"; el.style.top = "54px";
+  $("laneWrap").appendChild(el);
+  setTimeout(() => el.remove(), 1400);
+}
+const starsFor = pct => pct >= 90 ? 5 : pct >= 80 ? 4 : pct >= 65 ? 3 : pct >= 50 ? 2 : pct >= 30 ? 1 : 0;
+const starsHtml = pct => { const s = starsFor(pct); return "★".repeat(s) + `<span class="off">${"★".repeat(5 - s)}</span>`; };
+function updateTally() {
+  $("nPerfect").textContent = judged.perfect; $("nGood").textContent = judged.good; $("nMiss").textContent = judged.miss;
+  $("streak").textContent = streak; $("bestStreak").textContent = bestStreak;
+  const pct = judged.weight ? Math.round(100 * judged.acc / judged.weight) : null;
+  $("score").textContent = pct == null ? "—" : pct + "%";
+  $("score").classList.toggle("empty", pct == null);
+  $("stars").innerHTML = pct == null ? "" : starsHtml(pct);
+}
+function finishSong() {
+  pause(); pausedAt = duration;
+  while (nextJudge < notes.length) finalize(nextJudge++, true);  // grade the stragglers quietly
+  const done = judged.perfect + judged.good + judged.miss;
+  if (!done || !mic) return;
+  const pct = judged.weight ? Math.round(100 * judged.acc / judged.weight) : 0;
+  $("rTitle").textContent = pct >= 90 ? "Superstar! 🌟" : pct >= 75 ? "Nailed it!" : pct >= 50 ? "Nice pipes!" : "Warming up!";
+  $("rStars").innerHTML = starsHtml(pct);
+  $("rScore").textContent = pct + "%";
+  $("rDetail").textContent = `${judged.perfect} perfect · ${judged.good} good · ${judged.miss} missed` +
+    (judged.bonus ? ` · ${judged.bonus} bonus` : "") + ` · best streak ${bestStreak}`;
+  const lines = [];
+  if (judged.cents.length > 50) {
+    const c = [...judged.cents].sort((a, b) => a - b)[judged.cents.length >> 1];
+    lines.push(Math.abs(c) < 12 ? `Pitch: right in tune (typically ${c > 0 ? "+" : ""}${Math.round(c)}¢) 🎯`
+      : c < 0 ? `Pitch: you tend to sit a little flat (${Math.round(c)}¢) — aim a touch higher`
+      : `Pitch: you tend to sit a little sharp (+${Math.round(c)}¢) — relax a touch lower`);
+  }
+  const lat = +$("latency").value;
+  if (lat) lines.push(`Timing: adjusted for your voice arriving ${lat > 0 ? lat + " ms late" : -lat + " ms early"}`);
+  const scored = phraseScores.map((s, k) => ({ s, k })).filter(x => x.s != null);
+  const weakest = scored.length > 1 ? scored.reduce((a, b) => b.s < a.s ? b : a) : null;
+  if (weakest) lines.push(`Toughest phrase: #${weakest.k + 1} at ${fmt(phrases[weakest.k].start)} — ${weakest.s}%`);
+  $("rSummary").innerHTML = lines.map(esc).join("<br>");
+  $("rSummary").hidden = !lines.length;
+  $("rPractice").hidden = !weakest;
+  $("rPractice").onclick = () => {
+    closeDialog($("resultsDlg"));
+    const p = phrases[weakest.k]; setLoop(p); pausedAt = loop.start; resetScore(loop.start); play();
+  };
+  openDialog($("resultsDlg"));
+}
+$("rAgain").onclick = () => { closeDialog($("resultsDlg")); setLoop(null); seek(0); play(); };
+$("rClose").onclick = () => closeDialog($("resultsDlg"));
+
+$("latency").oninput = e => { $("latencyVal").textContent = e.target.value + " ms"; store.set("latency", +e.target.value); };
+$("autoSync").onchange = e => store.set("autoSync", e.target.checked);
+$("difficulty").querySelectorAll("button").forEach(b => b.onclick = () => {
+  $("difficulty").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+  store.set("difficulty", b.dataset.v);
+});
+$("octaveFree").onchange = e => store.set("octaveFree", e.target.checked);
+
+// ============ auto-sync + key suggestion ============
+// Your voice can reach the app late (Bluetooth headphones add 150-250 ms) and most people
+// sing a touch behind the beat. Every few seconds, find the offset that best lines your
+// recent singing up with the notes and adopt it if it's clearly better.
+function matchRate(offset) {
+  let ok = 0, inNotes = 0;
+  for (const x of syncBuf) {
+    const i = noteAt(x.t - offset);
+    if (i < 0) continue;
+    inNotes++;
+    if (Math.abs(fold(x.m - notes[i].pitch)) <= 0.5) ok++;
+  }
+  return inNotes >= 150 ? ok / syncBuf.length : 0;
+}
+function autoSync() {
+  if (!$("autoSync").checked || syncBuf.length < 250) return;  // ~5 s of singing
+  const cur = (+$("latency").value) / 1000 * rate;
+  const base = matchRate(cur);
+  const scan = [];
+  for (let o = -0.3; o <= 0.6001; o += 0.02) scan.push({ o, r: matchRate(o) });
+  // Long notes make the fit a flat-topped plateau: many offsets line up almost equally well.
+  // Its middle is the robust estimate; the single highest point is essentially noise.
+  let b = 0;
+  scan.forEach((x, k) => { if (x.r > scan[b].r) b = k; });
+  let lo = b, hi = b;
+  while (lo > 0 && scan[lo - 1].r >= scan[b].r - 0.015) lo--;
+  while (hi < scan.length - 1 && scan[hi + 1].r >= scan[b].r - 0.015) hi++;
+  const best = { o: (scan[lo].o + scan[hi].o) / 2, r: scan[b].r };
+  // only trust a fit where a good share of your singing actually lands on the notes; singing
+  // the whole song in another key lines up badly at every offset and must not move the timing
+  if (best.r >= 0.25 && best.r - base > 0.06 && Math.abs(best.o - cur) >= 0.04) {
+    const ms = Math.max(-300, Math.min(600, Math.round(best.o / rate * 100) * 10));
+    $("latency").value = ms; $("latencyVal").textContent = ms + " ms"; store.set("latency", ms);
+    toast(`⏱ Synced to your timing (${ms > 0 ? "+" : ""}${ms} ms)`, 2500);
+  }
+}
+// Singing consistently 2+ semitones away from the song? Offer to move the song to you.
+let keyHintShown = false, sticky = null;
+function suggestKey() {
+  if (keyHintShown || !notes.length) return;
+  const off = (+$("latency").value) / 1000 * rate, ds = [];
+  for (const x of syncBuf) { const i = noteAt(x.t - off); if (i >= 0) ds.push(fold(x.m - notes[i].pitch)); }
+  if (ds.length < 200) return;  // ~4 s of singing on notes
+  ds.sort((a, b) => a - b);
+  const med = ds[ds.length >> 1], iqr = ds[Math.floor(ds.length * .75)] - ds[Math.floor(ds.length * .25)];
+  const k = Math.round(med);
+  if (Math.abs(med) < 1.5 || iqr > 1.5 || Math.abs(transpose + k) > 6) return;
+  keyHintShown = true;
+  sticky = { until: performance.now() + 12000 };
+  const h = $("hint");
+  h.className = "bubble warn";
+  h.innerHTML = `<div class="small">You're singing about ${Math.abs(k)} semitone${Math.abs(k) > 1 ? "s" : ""} ${k > 0 ? "higher" : "lower"} than the song.</div>
+    <button class="btn" id="keyHintBtn">Move the song ${k > 0 ? "up" : "down"} ${Math.abs(k)}</button>`;
+  lastHint = null;
+  $("keyHintBtn").onclick = () => { sticky = null; changeKey(k); };
+}
+
+// ============ celebration: sticker pops + confetti ============
+const POP_WORDS = { perfect: ["PERFECT!", "Spot on!", "Yesss!", "Flawless!"], good: ["nice!", "close!", "good!"], miss: ["oops", "so close", "missed"], bonus: ["+bonus", "slick!", "+bonus"] };
+let lastPop = 0;
+function celebrate(n, grade) {
+  const now = performance.now();
+  if (grade === "perfect") burst(n);
+  if (now - lastPop < 350 && grade !== "miss") return;  // don't bury the lane in stickers
+  lastPop = now;
+  const r = cv.getBoundingClientRect();
+  const el = document.createElement("div");
+  el.className = `pop ${grade}`;
+  const words = POP_WORDS[grade];
+  el.textContent = words[Math.floor(Math.random() * words.length)];
+  el.style.left = lane.headX + "px";
+  el.style.top = Math.max(8, Math.min(r.height - 50, lane.yOf(n.pitch) - 34)) + "px";
+  $("laneWrap").appendChild(el);
+  setTimeout(() => el.remove(), 1000);
+}
+function burst(n) {
+  const r = cv.getBoundingClientRect();
+  const x = lane.headX, y = lane.yOf(n.pitch);
+  const colors = [css("--tomato"), css("--sun"), css("--mint"), css("--sky"), css("--grape"), css("--gum")];
+  if (particles.length > 160) return;  // plenty of confetti already
+  for (let k = 0; k < 16; k++) {
+    const a = Math.random() * Math.PI * 2, v = 2 + Math.random() * 4;
+    particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 2, life: 1, c: colors[k % colors.length],
+      rot: Math.random() * 6, vr: (Math.random() - .5) * .4, s: 5 + Math.random() * 5 });
+  }
+}
+
+// ============ HUD ============
+let lastHint = null;
+function setHint(text, kind, html = false) {
+  if (sticky && performance.now() < sticky.until) return;
+  const key = kind + "|" + text;
+  if (key === lastHint) return;
+  lastHint = key;
+  const h = $("hint");
+  h.className = "bubble" + (kind ? " " + kind : "");
+  if (html) h.innerHTML = text; else h.textContent = text;
+}
+function updateHud() {
+  const t = heardTime();
+  $("time").textContent = `${fmt(t)} / ${fmt(duration)}`;
+  $("skipIntro").hidden = !(notes.length && !loop && t < notes[0].start - 4) || counting;
+  $("singBtn").hidden = playing || counting || !notes.length || !!song?.waiting;
+  if (song?.waiting) { setHint("⏳ Loading the rest of the song — it'll carry on by itself", "warn"); return; }
+  // Judge the live pitch against the note at the moment that voice was sung.
+  const at = playing && mic && live.t != null ? live.t : t;
+  const i = noteAt(at), n = i >= 0 ? notes[i] : null;
+  $("tNote").textContent = n ? n.name : "–";
+  $("tHz").textContent = n ? `${n.note_hz.toFixed(1)} Hz` : "";
+  $("tTile").style.background = n ? pcColor(n.pitch) : "";
+  const m = live.midi;
+  $("yNote").textContent = m != null ? noteName(Math.round(m)) : "–";
+  $("yHz").textContent = m != null ? `${hz(m).toFixed(1)} Hz` : "";
+  const tuner = $("tuner"), yTile = $("yTile");
+  if (n && m != null) {
+    const d = diffTo(m, n.pitch), cents = Math.round(d * 100), tol = tolerance();
+    tuner.classList.remove("idle");
+    $("needle").style.left = (50 + Math.max(-50, Math.min(50, cents / 2))) + "%";  // ±100¢ across the track
+    $("centsLbl").textContent = (cents > 0 ? "+" : "") + cents + "¢";
+    const on = Math.abs(cents) <= tol;
+    yTile.style.background = on ? css("--mint") : css("--sun");
+    if (on) setHint("✓ Right on pitch!", "good");
+    else if (cents < 0) setHint(`↑ A bit higher (${-cents}¢ flat)`, "warn");
+    else setHint(`↓ A bit lower (${cents}¢ sharp)`, "warn");
+    return;
+  }
+  tuner.classList.add("idle"); $("needle").style.left = "50%"; $("centsLbl").textContent = "0¢";
+  yTile.style.background = "";
+  if (!playing) {
+    setHint(`<div class="steps"><div>🎧 Headphones on</div><div class="${mic ? "done" : ""}">🎤 Turn on the mic <kbd>M</kbd></div>` +
+            `<div>▶ Press play <kbd>Space</kbd></div></div>`, "", true);
+  } else if (!mic) {
+    setHint("🎤 Turn on the mic (M) to get scored", "warn");
+  } else if (n && performance.now() - live.heardAt > 5000) {
+    setHint("Can't hear you — sing up, or check the mic level", "warn");
+  } else {
+    const up = notes[firstNoteEndingAfter(t)];
+    setHint(n ? "Sing!" : up ? `Next up: ${up.name} in ${Math.max(0, up.start - t).toFixed(1)}s` : "That's the last note!", "");
+  }
+}
+
+// ============ lane rendering ============
+// Two layouts. "Pages" (default): the notes stay still and fill the lane one phrase at a
+// time while a cursor moves across them, like SingStar; the next page's first notes show
+// faded on the right. "Scroll": notes glide past a fixed playhead. In both, the vertical
+// range only changes when a page's notes wouldn't fit, so the notes don't drift about.
+const cv = $("lane"), g = cv.getContext("2d");
+const KEYS = 34, SCROLL_PPS = 230, PAGE_MAX = 3.5;  // seconds of notes per page: short pages = wide notes
+const view = { lo: null, hi: null, tlo: null, thi: null };
+const lane = { yOf: p => 0, headX: 0, tOfX: x => 0, page: null, flipAt: 0 };
+let pages = [], songFits = false;
+const laneMode = () => $("laneMode").querySelector(".on")?.dataset.v || "pages";
+const viewMid = () => view.lo == null ? (minP + maxP) / 2 : (view.lo + view.hi) / 2;
+
+function buildPages() {
+  pages = [];
+  for (const p of phrases) {
+    let first = p.first;
+    while (first <= p.last) {
+      let last = first;
+      while (last < p.last && notes[last + 1].end - notes[first].start <= PAGE_MAX) last++;
+      if (last < p.last) {  // a long phrase: turn the page at its biggest breath, not mid-run
+        let cut = last, gap = -1;
+        for (let i = first + 2; i <= last; i++) {
+          const gp = notes[i].start - notes[i - 1].end;
+          if (gp >= gap) { gap = gp; cut = i - 1; }
+        }
+        last = cut;
+      }
+      pages.push({ first, last });
+      first = last + 1;
+    }
+  }
+  pages.forEach((pg, k) => {
+    const prev = pages[k - 1], next = pages[k + 1], s0 = notes[pg.first].start, e0 = notes[pg.last].end;
+    pg.start = Math.max(prev ? prev.end : 0, s0 - 0.5);                     // room for the cursor to approach
+    pg.end = next ? Math.min(notes[next.first].start, e0 + 0.3) : e0 + 0.3;
+    pg.from = k === 0 ? 0 : Math.max(prev.end, s0 - 2.0);                    // when this page takes over
+    pg.viewEnd = pg.end + (next && notes[next.first].start - pg.end < 2 ? 0.8 : 0);  // preview of what's next
+    let lo = Infinity, hi = -Infinity;
+    for (let i = pg.first; i < notes.length && notes[i].start < pg.viewEnd; i++) { lo = Math.min(lo, notes[i].pitch); hi = Math.max(hi, notes[i].pitch); }
+    pg.nlo = lo; pg.nhi = hi;                          // the notes themselves
+    lo -= 2.5; hi += 2.5;
+    if (hi - lo < 13) { const c = (lo + hi) / 2; lo = c - 6.5; hi = c + 6.5; }
+    pg.lo = lo; pg.hi = hi;                            // the view we'd pick for this page
+  });
+}
+function pageAt(t) {
+  let lo = 0, hi = pages.length - 1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (pages[m].from <= t) lo = m; else hi = m - 1; }
+  return pages[lo];
+}
+function sizeCanvas() {
+  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function pill(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+function draw() {
+  const r = cv.getBoundingClientRect(), W = r.width, H = r.height;
+  if (!notes.length || !W || !pages.length) return;
+  const ink = css("--ink"), t = heardTime(), P = preset(), paged = laneMode() === "pages";
+  const pg = pageAt(t);
+  let xOf, t0, t1, headX, pps;
+  if (paged) {
+    const x0 = KEYS + 18, x1 = W - 18, span = pg.viewEnd - pg.start;
+    pps = (x1 - x0) / span;
+    xOf = s => x0 + (s - pg.start) * pps;
+    t0 = pg.start; t1 = pg.viewEnd;
+    headX = Math.max(x0, Math.min(x1, xOf(t)));
+    lane.tOfX = x => pg.start + (x - x0) / pps;
+    if (lane.page !== pg) { lane.page = pg; lane.flipAt = performance.now(); }
+  } else {
+    pps = SCROLL_PPS; headX = W * 0.25;
+    xOf = s => headX + (s - t) * pps;
+    t0 = t - (headX - KEYS) / pps; t1 = t + (W - headX) / pps;
+    lane.tOfX = x => t + (x - headX) / pps;
+    lane.flipAt = 0;
+  }
+  lane.headX = headX;
+  // vertical range: whole song if it fits, else per page — and only when the notes wouldn't fit
+  const need = songFits ? { lo: minP - 0.5, hi: maxP + 0.5, nlo: minP + 3, nhi: maxP - 3 } : pg;
+  if (view.lo == null) Object.assign(view, { lo: need.lo, hi: need.hi, tlo: need.lo, thi: need.hi });
+  // keep the view unless this page's notes would sit within a semitone of the edge (or the
+  // view has become far bigger than the page needs, which would make the notes small)
+  if (need.nlo - 1 < view.tlo || need.nhi + 1 > view.thi || view.thi - view.tlo > need.hi - need.lo + 8) {
+    view.tlo = need.lo; view.thi = need.hi;
+  }
+  view.lo += (view.tlo - view.lo) * 0.2; view.hi += (view.thi - view.hi) * 0.2;
+  const rh = H / (view.hi - view.lo);
+  const yOf = p => (view.hi - p) * rh;
+  lane.yOf = yOf;
+  const fade = paged ? 0.35 + 0.65 * Math.min(1, (performance.now() - lane.flipAt) / 200) : 1;  // soft page turn
+  g.clearRect(0, 0, W, H);
+  const pLo = Math.floor(view.lo), pHi = Math.ceil(view.hi);
+  for (let p = pLo; p <= pHi; p++) {
+    const y = yOf(p) - rh / 2, black = [1, 3, 6, 8, 10].includes(((p % 12) + 12) % 12);
+    if (black) { g.fillStyle = "rgba(234,220,196,.5)"; g.fillRect(KEYS, y, W - KEYS, rh); }
+    if (((p % 12) + 12) % 12 === 0) { g.fillStyle = "rgba(43,34,64,.12)"; g.fillRect(KEYS, y + rh - 1, W - KEYS, 1.5); }
+  }
+  g.fillStyle = "rgba(43,34,64,.05)";
+  for (let s = Math.ceil(t0); s < t1; s++) g.fillRect(xOf(s), 0, 1.5, H);
+  if (loop) {
+    const a = Math.max(KEYS, xOf(loop.start)), b = Math.min(W, xOf(loop.end));
+    if (b > a) { g.fillStyle = "rgba(111,95,174,.07)"; g.fillRect(a, 0, b - a, H); }
+  }
+  if (paged && pg.viewEnd > pg.end) {  // divider before the preview of the next page
+    g.save(); g.strokeStyle = "rgba(43,34,64,.25)"; g.setLineDash([5, 5]); g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(xOf(pg.end), 0); g.lineTo(xOf(pg.end), H); g.stroke(); g.restore();
+  }
+  // target notes: bright ahead of you, painted in as you hit them, settled once judged
+  const active = noteAt(playing && mic && live.t != null ? live.t : t);
+  for (let i = Math.max(0, firstNoteEndingAfter(t0)); i < notes.length && notes[i].start < t1; i++) {
+    const n = notes[i], st = judge[i];
+    const x = Math.max(KEYS + 2, xOf(n.start)), w = Math.max(8, xOf(n.end) - x - 3);
+    const h = Math.max(8, Math.min(rh * 0.78, 30)), top = yOf(n.pitch) - h / 2, color = pcColor(n.pitch);
+    const bonus = n.end - n.start < P.bonusBelow, started = st && !st.skip && st.seen > 0;
+    const upcoming = paged && i > pg.last;  // preview of the next page
+    const base = (upcoming ? 0.4 : 1) * fade;
+    g.setLineDash(bonus ? [4, 3] : []);
+    if (st?.grade) {
+      g.globalAlpha = base * (st.grade === "miss" ? 0.3 : st.grade === "good" ? 0.75 : 1);
+      g.fillStyle = color; pill(x, top, w, h, h / 2); g.fill();
+    } else if (started) {
+      g.globalAlpha = base * 0.35; g.fillStyle = color; pill(x, top, w, h, h / 2); g.fill();
+      g.globalAlpha = base; g.fillStyle = color;
+      g.save(); pill(x, top, w, h, h / 2); g.clip();
+      for (const mt of st.marks) g.fillRect(xOf(mt) - 0.03 * pps, top, 0.06 * pps, h);
+      g.restore();
+    } else {
+      g.globalAlpha = base * (st?.skip ? 0.35 : 1);
+      if (i === active) { g.fillStyle = ink; pill(x + 3, top + 3, w, h, h / 2); g.fill(); }
+      g.fillStyle = color; pill(x, top, w, h, h / 2); g.fill();
+    }
+    g.globalAlpha = base * (st?.grade === "miss" || st?.skip ? 0.4 : 1);
+    g.lineWidth = i === active ? 3 : 2; g.strokeStyle = ink; pill(x, top, w, h, h / 2); g.stroke();
+    g.setLineDash([]);
+    g.globalAlpha = base; g.fillStyle = ink; g.textBaseline = "middle";
+    if (st?.grade === "perfect" && w > 18) { g.font = `800 ${Math.min(13, h * .7)}px ${css("--display")}`; g.fillText("★", x + w - 15, top + h / 2); }
+    if (w > 30 && h >= 12) { g.font = `800 ${Math.min(13, h * .6)}px ${css("--display")}`; g.fillText(n.name, x + 7, top + h / 2 + 0.5); }
+    g.globalAlpha = 1;
+  }
+  // your pitch trail: ink outline under a coloured core
+  g.lineCap = "round"; g.lineJoin = "round";
+  for (const pass of [0, 1]) {
+    for (let k = 1; k < trail.length; k++) {
+      const a = trail[k - 1], b = trail[k];
+      if (b.t < t0 || a.t < t0 || b.t > t1 || b.t - a.t > 0.08) continue;
+      g.lineWidth = pass ? 4 : 7;
+      g.strokeStyle = pass ? (b.hit === true ? css("--mint") : b.hit === false ? css("--tomato") : "#fffaf2") : ink;
+      g.beginPath(); g.moveTo(xOf(a.t), yOf(a.m)); g.lineTo(xOf(b.t), yOf(b.m)); g.stroke();
+    }
+  }
+  // confetti
+  for (let k = particles.length - 1; k >= 0; k--) {
+    const p = particles[k];
+    p.x += p.vx; p.y += p.vy; p.vy += 0.18; p.rot += p.vr; p.life -= 0.018;
+    if (p.life <= 0) { particles.splice(k, 1); continue; }
+    g.save(); g.globalAlpha = Math.min(1, p.life * 1.5); g.translate(p.x, p.y); g.rotate(p.rot);
+    g.fillStyle = p.c; g.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); g.lineWidth = 1; g.strokeStyle = ink; g.strokeRect(-p.s / 2, -p.s / 4, p.s, p.s / 2);
+    g.restore();
+  }
+  // keyboard strip
+  for (let p = pLo; p <= pHi; p++) {
+    const y = yOf(p) - rh / 2, black = [1, 3, 6, 8, 10].includes(((p % 12) + 12) % 12);
+    g.fillStyle = black ? ink : "#fffdf8"; g.fillRect(0, y, KEYS, rh);
+    if (!black) { g.fillStyle = "rgba(43,34,64,.18)"; g.fillRect(0, y + rh - 1, KEYS, 1); }
+    if ((((p % 12) + 12) % 12 === 0 || rh >= 26) && !black) { g.fillStyle = ink; g.font = `700 ${Math.min(10, rh * .6)}px ${css("--mono")}`; g.textBaseline = "middle"; g.fillText(noteName(p), 3, yOf(p)); }
+  }
+  g.fillStyle = ink; g.fillRect(KEYS, 0, 2.5, H);
+  // cursor / playhead with a little flag
+  g.fillStyle = ink; g.fillRect(headX - 1.5, 0, 3, H);
+  g.beginPath(); g.moveTo(headX - 9, 0); g.lineTo(headX + 9, 0); g.lineTo(headX, 12); g.closePath(); g.fill();
+  // live voice ball, with an arrow pointing where to go
+  if (live.midi != null && mic) {
+    const n = active >= 0 ? notes[active] : null;
+    const d = n ? diffTo(live.midi, n.pitch) : 0;
+    const shown = n ? n.pitch + d : $("octaveFree").checked ? live.midi - 12 * Math.round((live.midi - viewMid()) / 12) : live.midi;
+    const on = n && Math.abs(d) * 100 <= tolerance();
+    const y = Math.max(12, Math.min(H - 12, yOf(shown)));
+    g.fillStyle = ink; g.beginPath(); g.arc(headX + 2, y + 2, 11, 0, 7); g.fill();
+    g.fillStyle = n ? (on ? css("--mint") : css("--tomato")) : "#fffdf8";
+    g.beginPath(); g.arc(headX, y, 11, 0, 7); g.fill(); g.lineWidth = 2.5; g.strokeStyle = ink; g.stroke();
+    if (n && !on) {  // ↑ or ↓ toward the target
+      const dir = d < 0 ? -1 : 1, ay = y + dir * 20;
+      g.fillStyle = ink; g.beginPath();
+      g.moveTo(headX - 7, ay + dir * 5); g.lineTo(headX + 7, ay + dir * 5); g.lineTo(headX, ay - dir * 6); g.closePath(); g.fill();
+    }
+  }
+}
+function frame() { if (notes.length && !$("stage").classList.contains("hidden")) { draw(); updateHud(); } requestAnimationFrame(frame); }
+cv.addEventListener("click", e => {
+  const r = cv.getBoundingClientRect();
+  seek(lane.tOfX(e.clientX - r.left));
+});
+$("laneMode").querySelectorAll("button").forEach(b => b.onclick = () => {
+  $("laneMode").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+  store.set("laneMode", b.dataset.v);
+  view.lo = null;
+});
+window.addEventListener("resize", sizeCanvas);
+
+// ============ boot ============
+for (const id of ["volBacking", "volGuide", "volPiano"]) $(id).value = store.get(id, $(id).value);
+$("latency").value = store.get("latency", 0); $("latencyVal").textContent = $("latency").value + " ms";
+$("autoSync").checked = store.get("autoSync", true);
+const savedDiff = ({ "75": "easy", "50": "normal", "30": "hard" })[store.get("difficulty", "normal")] || store.get("difficulty", "normal");
+$("difficulty").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === savedDiff));
+$("octaveFree").checked = store.get("octaveFree", true);
+const savedLane = store.get("laneMode", "pages");
+$("laneMode").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === savedLane));
+rate = store.get("speed", 1); $("speed").value = rate; $("speedVal").textContent = Math.round(rate * 100) + "%";
+refreshSongs();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
