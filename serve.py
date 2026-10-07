@@ -128,6 +128,16 @@ def audio_duration(path) -> float:
     return read_tags(path).get("duration") or 0.0
 
 
+def song_genre(stem: str):
+    """The genre recognised for a processed song (the full run's, else the quick start's)."""
+    for d in (OUTPUT / stem, OUTPUT / stem / "preview"):
+        try:
+            return json.loads((d / "genre.json").read_text()).get("genre")
+        except (OSError, ValueError):
+            continue
+    return None
+
+
 class Library:
     """Songs already on this Mac.
 
@@ -505,6 +515,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "file": path.relative_to(ROOT).as_posix(),
                 "processed": (OUTPUT / stem / "notes.json").exists(),
                 "preview": (OUTPUT / stem / "preview" / "notes.json").exists(),
+                "genre": song_genre(stem),
                 "job": JOBS.get(stem) or None,
                 "mtime": path.stat().st_mtime if path.exists() else 0,
                 **meta.get(stem, {}),

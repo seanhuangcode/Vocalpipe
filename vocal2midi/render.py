@@ -2,6 +2,8 @@ import csv
 import json
 import shutil
 import subprocess
+import tempfile
+from pathlib import Path
 
 import numpy as np
 import pretty_midi
@@ -9,14 +11,20 @@ import pretty_midi
 from .audio import write_wav
 from .notes import midi_to_hz
 
-FIELDS = ["start", "end", "duration", "pitch", "name", "hz", "note_hz", "cents", "velocity", "confidence"]
+FIELDS = ["start", "end", "duration", "pitch", "name", "hz", "note_hz", "cents", "velocity", "confidence", "spoken"]
 
 
 def write_midi(notes, path, program=0):
+    """The sung melody, plus rapped/spoken syllables (rhythm only) on a track of their own."""
     pm = pretty_midi.PrettyMIDI()
     inst = pretty_midi.Instrument(program=program, name="Vocal melody")
-    inst.notes = [pretty_midi.Note(n.velocity, n.pitch, n.start, n.end) for n in notes]
+    inst.notes = [pretty_midi.Note(n.velocity, n.pitch, n.start, n.end) for n in notes if not n.spoken]
     pm.instruments.append(inst)
+    spoken = [n for n in notes if n.spoken]
+    if spoken:
+        rap = pretty_midi.Instrument(program=115, name="Rapped / spoken (rhythm)")  # woodblock
+        rap.notes = [pretty_midi.Note(n.velocity, n.pitch, n.start, n.end) for n in spoken]
+        pm.instruments.append(rap)
     pm.write(str(path))
 
 
@@ -37,6 +45,8 @@ def synth_piano(notes, duration, sr=44100):
     k = np.arange(1, len(partials) + 1)
     release = 0.15
     for n in notes:
+        if n.spoken:  # rapped syllables have no melody to play
+            continue
         f = float(midi_to_hz(n.pitch))
         freqs = k * f * np.sqrt(1 + 0.0004 * k**2)
         keep = freqs < sr / 2
@@ -57,13 +67,27 @@ def synth_piano(notes, duration, sr=44100):
 
 def render_piano(notes, midi_path, wav_path, duration, soundfont=None, sr=44100):
     if soundfont and shutil.which("fluidsynth"):
-        subprocess.run(["fluidsynth", "-ni", "-q", "-g", "0.8", "-r", str(sr), "-F",
-                        str(wav_path), str(soundfont), str(midi_path)], check=True)
+        with tempfile.TemporaryDirectory() as tmp:
+            if any(n.spoken for n in notes):  # just the melody: rapped syllables have none
+                midi_path = Path(tmp) / "melody.mid"
+                write_midi([n for n in notes if not n.spoken], midi_path)
+            subprocess.run(["fluidsynth", "-ni", "-q", "-g", "0.8", "-r", str(sr), "-F",
+                            str(wav_path), str(soundfont), str(midi_path)], check=True)
         return
     write_wav(wav_path, synth_piano(notes, duration, sr), sr)
 
 
-def print_notes(notes, info, limit=40):
+def print_notes(notes, info, limit=40, genre=None):
+    if genre:
+        from .genre import text
+
+        print(f"  genre: {text(genre)}")
+        style = genre.get("style") or {}
+        vib = style.get("vibrato") or {}
+        if vib.get("share"):
+            print(f"  vibrato on {vib['share']:.0%} of the singing ({vib['rate']} Hz, ±{vib['extent_cents']:.0f} cents)")
+    if len(info.get("keys") or []) > 1:
+        print("  key changes: " + " → ".join(f"{k} ({t:.0f}s)" for t, k in info["keys"]))
     if not notes:
         print("  no notes found")
         return
@@ -73,9 +97,11 @@ def print_notes(notes, info, limit=40):
           f" | singer tuning offset {info['tuning_cents']:+.0f} cents")
     mode = "autotune detected → notes snapped to key" if info["autotune"] else "natural singing"
     print(f"  key {info['key']} | {mode} ({info['on_note_ratio']:.0%} of frames within 10 cents of a note)")
+    if info.get("spoken_share"):
+        print(f"  {info['spoken_share']:.0%} of it rapped/spoken: those notes are rhythm only (marked 'rap')")
     print(f"  {'#':>4} {'start':>7} {'dur':>5}  {'note':<4} {'sung Hz':>8} {'note Hz':>8} {'cents':>6} {'vel':>4}")
     for i, n in enumerate(notes[:limit]):
         print(f"  {i + 1:>4} {n.start:7.2f} {n.duration:5.2f}  {n.name:<4} {n.hz:8.1f} "
-              f"{n.note_hz:8.1f} {n.cents:+6.0f} {n.velocity:4d}")
+              f"{n.note_hz:8.1f} {n.cents:+6.0f} {n.velocity:4d}{'  rap' if n.spoken else ''}")
     if len(notes) > limit:
         print(f"  ... {len(notes) - limit} more (see notes.csv / viewer.html)")

@@ -205,6 +205,7 @@ canvas#lane { display: block; width: 100%; height: 470px; }
 .score { font-size: 64px; font-weight: 800; letter-spacing: -3px; line-height: 1; -webkit-text-stroke: 1.5px var(--ink); paint-order: stroke fill; color: var(--sun); }
 .tally { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .tally .chip { color: var(--ink); }
+.chip.genre { background: color-mix(in srgb, var(--grape) 35%, white); }
 .songinfo { font: 12px/1.5 var(--mono); color: var(--ink-2); padding: 0 4px; }
 
 /* ---------- controls ---------- */
@@ -638,7 +639,7 @@ function renderShelf() {
   shelf.innerHTML = songs.map(s => `<button class="song-card${s.song === current ? " selected" : ""}" data-song="${esc(s.song)}">
       <div class="cover">${s.artwork ? `<img src="${esc(s.artwork)}" alt="">` : ["🎤", "🎸", "🎹", "🥁", "🎺", "🎷"][s.song.length % 6]}</div>
       <div class="meta"><b>${esc(s.title || s.song)}</b><small>${esc(s.artist || (s.source === "library" ? "from your Mac" : s.file))}</small>
-      <div class="chips">${statusChip(s)}${s.source === "preview" ? '<span class="chip">30s clip</span>' : s.source === "free" ? '<span class="chip">CC</span>' : ""}</div></div></button>`).join("") +
+      <div class="chips">${statusChip(s)}${s.genre ? `<span class="chip">${esc(s.genre)}</span>` : ""}${s.source === "preview" ? '<span class="chip">30s clip</span>' : s.source === "free" ? '<span class="chip">CC</span>' : ""}</div></div></button>`).join("") +
     `<label class="add-card"><div><div class="plus">＋</div>Add songs<small>or drop them here</small><input type="file" multiple accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.aac,.aif,.aiff,.opus" hidden></div></label>`;
   shelf.querySelectorAll(".song-card").forEach(c => c.onclick = () => chooseSong(c.dataset.song));
   shelf.querySelector(".add-card input").onchange = e => { uploadFiles(e.target.files); e.target.value = ""; };
@@ -726,12 +727,12 @@ async function loadSong(stem, { preview = false } = {}) {
   const data = await (await fetch(`/${encodeURIComponent(stem)}/${base}notes.json`)).json();
   const meta = songs.find(x => x.song === stem) || {};
   song = { stem, ...data, meta, partial: preview ? data.duration : null, waiting: false };
-  baseNotes = singable(data.notes);
+  baseNotes = singable(data.notes, data.genre);
   duration = data.duration || (baseNotes.length ? baseNotes[baseNotes.length - 1].end + 2 : 0);
   transpose = 0; applyTranspose();
   setStemSources({ backing: base + "instrumental.wav", guide: base + "vocals.wav" });
   songInfo();
-  syncBuf.length = 0; keyHintShown = false; setLoop(null);
+  syncBuf.length = 0; keyHintShown = false; rapHintShown = false; setLoop(null);
   $("keyDown").disabled = $("keyUp").disabled = preview;
   $("keyDown").title = $("keyUp").title = preview ? "Available once the whole song has loaded" : "";
   $("partialBadge").hidden = !preview;
@@ -742,14 +743,16 @@ async function loadSong(stem, { preview = false } = {}) {
   if (!preview) { const k = store.get(`key:${stem}`, 0); if (k) changeKey(k); }  // your key for this song
 }
 // Split-second notes (fast runs) are right only about half the time and sound wrong on the
-// piano guide, so leave them out: the note before carries through instead.
-const MIN_NOTE = 0.15;
-function singable(list) {
+// piano guide, so leave them out: the note before carries through instead. Songs sung with
+// runs (R&B, soul, gospel) keep their quick notes, as bonus notes. Rapped syllables all stay.
+const MIN_NOTE = 0.15, MIN_RUN_NOTE = 0.08, SPOKEN = "#d9d1e3";
+function singable(list, genre) {
+  const min = (genre?.style?.runs ?? 0) >= 0.2 ? MIN_RUN_NOTE : MIN_NOTE;
   const out = [];
   for (const n of list) {
-    if (n.end - n.start >= MIN_NOTE) { out.push({ ...n }); continue; }
+    if (n.spoken || n.end - n.start >= min) { out.push({ ...n }); continue; }
     const prev = out[out.length - 1];
-    if (prev && n.start - prev.end < 0.05) prev.end = Math.max(prev.end, n.end);
+    if (prev && !prev.spoken && n.start - prev.end < 0.05) prev.end = Math.max(prev.end, n.end);
   }
   return out;
 }
@@ -760,8 +763,11 @@ function songInfo() {
     credit = ` · “${esc(meta.title)}” by ${esc(meta.artist)}, <a href="${esc(meta.license_url)}" target="_blank" rel="noopener">${esc(meta.license || "CC licence")}</a> · <a href="${esc(meta.page)}" target="_blank" rel="noopener">source ↗</a>`;
   else if (meta.source === "preview" && meta.buy)
     credit = ` · 30-sec preview · <a href="${esc(meta.buy)}" target="_blank" rel="noopener">get the full song ↗</a>`;
-  $("songInfo").innerHTML = `${baseNotes.length} notes · ${phrases.length} phrases · range ${noteName(Math.min(...ps))}–${noteName(Math.max(...ps))}` +
-    (song.autotune ? " · autotuned" : "") + (song.partial ? "" : ` · <a href="/${encodeURIComponent(song.stem)}/viewer.html" target="_blank">piano roll ↗</a>`) + credit;
+  const G = song.genre, rapped = baseNotes.filter(n => n.spoken).length;
+  const genre = G?.genre ? `<span class="chip genre" title="${esc((G.genres || []).map(([g, p]) => `${g} ${Math.round(p * 100)}%`).join(" · "))}">${esc(G.genre)}</span> ` +
+    [G.tempo ? `~${Math.round(G.tempo)} BPM` : "", ...(G.tags || [])].filter(Boolean).map(esc).join(" · ") + " · " : "";
+  $("songInfo").innerHTML = genre + `${baseNotes.length} notes${rapped ? ` (${rapped} rapped: rhythm only)` : ""} · ${phrases.length} phrases · range ${noteName(Math.min(...ps))}–${noteName(Math.max(...ps))}` +
+    (song.autotune && !(G?.tags || []).includes("autotuned") ? " · autotuned" : "") + (song.partial ? "" : ` · <a href="/${encodeURIComponent(song.stem)}/viewer.html" target="_blank">piano roll ↗</a>`) + credit;
 }
 // The whole song is ready: swap it in at the same spot, keeping the grades you've earned.
 async function upgradeToFull() {
@@ -772,7 +778,7 @@ async function upgradeToFull() {
   if (playing) pause();
   const oldNotes = notes, oldJudge = judge;
   song = { ...song, ...data, partial: null, waiting: false };
-  baseNotes = singable(data.notes); duration = data.duration;
+  baseNotes = singable(data.notes, data.genre); duration = data.duration;
   applyTranspose();
   judge = notes.map(n => {
     if (n.start >= t) return null;
@@ -809,10 +815,16 @@ function applyTranspose() {
   buildPhrases();
   buildPages();
   songFits = maxP - minP <= 20;  // small-range songs get one fixed vertical view
-  let keyName = "";
-  const m = /^([A-G]#?) (major|minor)$/.exec(song?.key || "");
-  if (m) keyName = NAMES[(NAMES.indexOf(m[1]) + transpose + 120) % 12] + (m[2] === "minor" ? "m" : "");
-  $("keyVal").textContent = transpose ? `${keyName} (${transpose > 0 ? "+" : ""}${transpose})` : `${keyName || "original"}`;
+  $("keyVal").textContent = keyLabel(pausedAt);
+}
+// The key at time t, moved by the transpose (songs can change key, e.g. up a step for the last chorus).
+function keyLabel(t) {
+  const keys = song?.keys?.length ? song.keys : [[0, song?.key || ""]];
+  let name = keys[0][1];
+  for (const [at, k] of keys) if (at <= t) name = k;
+  const m = /^([A-G]#?) (major|minor)$/.exec(name || "");
+  const shift = transpose ? ` (${transpose > 0 ? "+" : ""}${transpose})` : "";
+  return m ? NAMES[(NAMES.indexOf(m[1]) + transpose + 120) % 12] + (m[2] === "minor" ? "m" : "") + shift : (shift.trim() || "original");
 }
 // Phrases = runs of notes separated by a real rest; the unit for looping and phrase scores.
 function buildPhrases() {
@@ -914,7 +926,7 @@ function schedulePiano() {
   if (+$("volPiano").value === 0) { while (nextSched < notes.length && notes[nextSched].start < now + 0.15) nextSched++; return; }
   while (nextSched < notes.length && notes[nextSched].start < now + 0.15) {
     const n = notes[nextSched++];
-    if (n.end < now) continue;
+    if (n.end < now || n.spoken) continue;  // rapped syllables have no melody to play
     pianoNote(n.pitch, ctx.currentTime + Math.max(0, n.start - now) / rate, (n.end - Math.max(n.start, now)) / rate, n.velocity);
   }
 }
@@ -991,7 +1003,7 @@ async function hearPhrase() {
   const t0 = ctx.currentTime + 0.15;
   for (let i = p.first; i <= p.last; i++) {
     const n = notes[i];
-    pianoNote(n.pitch, t0 + (n.start - p.start) / rate, Math.max(0.08, (n.end - n.start) / rate), 110, bus);
+    if (!n.spoken) pianoNote(n.pitch, t0 + (n.start - p.start) / rate, Math.max(0.08, (n.end - n.start) / rate), 110, bus);
   }
   pausedAt = phraseStartAt(p); resetScore(pausedAt);
   toast(`♪ Phrase ${p.index + 1} — listen, then press play and sing it back`, 4000);
@@ -1171,7 +1183,7 @@ function detect(buf, end) {
   if (live.midi != null) syncBuf.push({ t: raw, m: live.midi, w: performance.now() });
   // only recent singing counts, so a changed setup (e.g. wired instead of Bluetooth headphones) re-syncs quickly
   while (syncBuf.length && (syncBuf[0].w < performance.now() - 25000 || syncBuf.length > 1500)) syncBuf.shift();
-  judgeFrame(t, live.midi, dt);
+  judgeFrame(t, live.midi, dt, live.midi != null || rms > 0.015);
   if (performance.now() - lastCheck > 3000) { lastCheck = performance.now(); autoSync(); suggestKey(); }
 }
 
@@ -1214,7 +1226,7 @@ function resetScore(t) {
   Object.assign(judged, { perfect: 0, good: 0, miss: 0, bonus: 0, weight: 0, acc: 0, cents: [] });
   updateTally();
 }
-function judgeFrame(t, m, dt) {
+function judgeFrame(t, m, dt, voiced = m != null) {
   const P = preset();
   while (nextJudge < notes.length && notes[nextJudge].end + P.grace < t) finalize(nextJudge++);
   let shown = m, hit = null, best = null;
@@ -1222,6 +1234,10 @@ function judgeFrame(t, m, dt) {
     const st = judge[k] || (judge[k] = { hit: 0, marks: [], seen: 0 });
     if (st.skip) continue;
     st.seen++;
+    if (notes[k].spoken) {  // rapped: rhythm only, any voice counts
+      if (voiced) { st.hit += dt; st.marks.push(Math.max(notes[k].start, Math.min(notes[k].end, t))); hit = true; }
+      continue;
+    }
     if (m == null) continue;
     const d = diffTo(m, notes[k].pitch);
     const dist = t < notes[k].start ? notes[k].start - t : t > notes[k].end ? t - notes[k].end : 0;
@@ -1338,7 +1354,7 @@ function matchRate(offset) {
   let ok = 0, inNotes = 0;
   for (const x of syncBuf) {
     const i = noteAt(x.t - offset);
-    if (i < 0) continue;
+    if (i < 0 || notes[i].spoken) continue;
     inNotes++;
     if (Math.abs(fold(x.m - notes[i].pitch)) <= 0.5) ok++;
   }
@@ -1367,11 +1383,11 @@ function autoSync() {
   }
 }
 // Singing consistently 2+ semitones away from the song? Offer to move the song to you.
-let keyHintShown = false, sticky = null;
+let keyHintShown = false, sticky = null, rapHintShown = false;
 function suggestKey() {
   if (keyHintShown || !notes.length) return;
   const off = (+$("latency").value) / 1000 * rate, ds = [];
-  for (const x of syncBuf) { const i = noteAt(x.t - off); if (i >= 0) ds.push(fold(x.m - notes[i].pitch)); }
+  for (const x of syncBuf) { const i = noteAt(x.t - off); if (i >= 0 && !notes[i].spoken) ds.push(fold(x.m - notes[i].pitch)); }
   if (ds.length < 200) return;  // ~4 s of singing on notes
   ds.sort((a, b) => a - b);
   const med = ds[ds.length >> 1], iqr = ds[Math.floor(ds.length * .75)] - ds[Math.floor(ds.length * .25)];
@@ -1437,14 +1453,17 @@ function updateHud() {
   // Judge the live pitch against the note at the moment that voice was sung.
   const at = playing && mic && live.t != null ? live.t : t;
   const i = noteAt(at), n = i >= 0 ? notes[i] : null;
-  $("tNote").textContent = n ? n.name : "–";
-  $("tHz").textContent = n ? `${n.note_hz.toFixed(1)} Hz` : "";
-  $("tTile").style.background = n ? pcColor(n.pitch) : "";
+  $("tNote").textContent = n ? (n.spoken ? "rap" : n.name) : "–";
+  $("tHz").textContent = n ? (n.spoken ? "rhythm only" : `${n.note_hz.toFixed(1)} Hz`) : "";
+  $("tTile").style.background = n ? (n.spoken ? SPOKEN : pcColor(n.pitch)) : "";
+  const kl = keyLabel(t);
+  if ($("keyVal").textContent !== kl) $("keyVal").textContent = kl;
+  if (n?.spoken && playing && !rapHintShown) { rapHintShown = true; toast("🎤 Rapped part: only the rhythm counts here, any pitch is fine", 4500); }
   const m = live.midi;
   $("yNote").textContent = m != null ? noteName(Math.round(m)) : "–";
   $("yHz").textContent = m != null ? `${hz(m).toFixed(1)} Hz` : "";
   const tuner = $("tuner"), yTile = $("yTile");
-  if (n && m != null) {
+  if (n && !n.spoken && m != null) {
     const d = diffTo(m, n.pitch), cents = Math.round(d * 100), tol = tolerance();
     tuner.classList.remove("idle");
     $("needle").style.left = (50 + Math.max(-50, Math.min(50, cents / 2))) + "%";  // ±100¢ across the track
@@ -1467,7 +1486,7 @@ function updateHud() {
     setHint("Can't hear you — sing up, or check the mic level", "warn");
   } else {
     const up = notes[firstNoteEndingAfter(t)];
-    setHint(n ? "Sing!" : up ? `Next up: ${up.name} in ${Math.max(0, up.start - t).toFixed(1)}s` : "That's the last note!", "");
+    setHint(n ? (n.spoken ? "🎤 Rap it! Only the rhythm counts here" : "Sing!") : up ? `Next up: ${up.spoken ? "a rapped part" : up.name} in ${Math.max(0, up.start - t).toFixed(1)}s` : "That's the last note!", "");
   }
 }
 
@@ -1585,7 +1604,7 @@ function draw() {
   for (let i = Math.max(0, firstNoteEndingAfter(t0)); i < notes.length && notes[i].start < t1; i++) {
     const n = notes[i], st = judge[i];
     const x = Math.max(KEYS + 2, xOf(n.start)), w = Math.max(8, xOf(n.end) - x - 3);
-    const h = Math.max(8, Math.min(rh * 0.78, 30)), top = yOf(n.pitch) - h / 2, color = pcColor(n.pitch);
+    const h = Math.max(8, Math.min(rh * 0.78, 30)), top = yOf(n.pitch) - h / 2, color = n.spoken ? SPOKEN : pcColor(n.pitch);
     const bonus = n.end - n.start < P.bonusBelow, started = st && !st.skip && st.seen > 0;
     const upcoming = paged && i > pg.last;  // preview of the next page
     const base = (upcoming ? 0.4 : 1) * fade;
@@ -1604,12 +1623,17 @@ function draw() {
       if (i === active) { g.fillStyle = ink; pill(x + 3, top + 3, w, h, h / 2); g.fill(); }
       g.fillStyle = color; pill(x, top, w, h, h / 2); g.fill();
     }
+    if (n.spoken) {  // rapped: rhythm only
+      g.save(); g.globalAlpha = base * 0.5; pill(x, top, w, h, h / 2); g.clip(); g.strokeStyle = ink; g.lineWidth = 1.5;
+      for (let hx = x - h; hx < x + w; hx += 7) { g.beginPath(); g.moveTo(hx, top + h); g.lineTo(hx + h, top); g.stroke(); }
+      g.restore();
+    }
     g.globalAlpha = base * (st?.grade === "miss" || st?.skip ? 0.4 : 1);
     g.lineWidth = i === active ? 3 : 2; g.strokeStyle = ink; pill(x, top, w, h, h / 2); g.stroke();
     g.setLineDash([]);
     g.globalAlpha = base; g.fillStyle = ink; g.textBaseline = "middle";
     if (st?.grade === "perfect" && w > 18) { g.font = `800 ${Math.min(13, h * .7)}px ${css("--display")}`; g.fillText("★", x + w - 15, top + h / 2); }
-    if (w > 30 && h >= 12) { g.font = `800 ${Math.min(13, h * .6)}px ${css("--display")}`; g.fillText(n.name, x + 7, top + h / 2 + 0.5); }
+    if (w > 30 && h >= 12) { g.font = `800 ${Math.min(13, h * .6)}px ${css("--display")}`; g.fillText(n.spoken ? "rap" : n.name, x + 7, top + h / 2 + 0.5); }
     g.globalAlpha = 1;
   }
   // your pitch trail: ink outline under a coloured core

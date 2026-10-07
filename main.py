@@ -8,7 +8,7 @@ Each song gets a folder in output/ containing:
     vocals.wav, instrumental.wav    separated stems (cached)
     pitch.npz                       frame-level f0 / confidence / loudness (cached)
     melody.mid                      the vocal melody as MIDI notes
-    notes.csv, notes.json           every note with start, duration, name, Hz, cents off
+    notes.csv, notes.json           every note with start, duration, name, Hz, cents off (+ genre, key changes)
     piano.wav                       the MIDI rendered as piano, to compare against the vocals
     viewer.html                     interactive piano roll: play along, click keys/notes to test
 """
@@ -23,6 +23,7 @@ import vocal2midi  # noqa: F401  (sets MPS fallback before torch loads)
 
 from vocal2midi import pipeline
 from vocal2midi.audio import pick_device
+from vocal2midi.genre import GENRES
 from vocal2midi.notes import Settings
 from vocal2midi.pitch import DEFAULT_RMVPE
 from vocal2midi.render import print_notes
@@ -34,11 +35,12 @@ def process(song: Path, args, device: str):
     t0 = time.time()
     cfg = Settings(method=args.notes, onset_threshold=args.sensitivity, smooth=not args.detailed, min_note=args.min_note,
                    conf_threshold=args.threshold, change_cost=args.steadiness, legato=args.legato,
-                   auto_tuning=not args.no_tuning, autotune=args.autotune, key=args.key)
-    notes, info, _ = pipeline.run(song, out, cfg, model=args.model, pitch=args.pitch, rmvpe_weights=args.rmvpe,
-                                  device=device, force=args.force, no_separate=args.no_separate,
-                                  soundfont=args.soundfont)
-    print_notes(notes, info, limit=args.show)
+                   auto_tuning=not args.no_tuning, autotune=args.autotune, key=args.key, genre=args.genre,
+                   spoken=0.0 if args.no_rap else Settings.spoken)
+    notes, info, meta = pipeline.run(song, out, cfg, model=args.model, pitch=args.pitch, rmvpe_weights=args.rmvpe,
+                                     device=device, force=args.force, no_separate=args.no_separate,
+                                     soundfont=args.soundfont)
+    print_notes(notes, info, limit=args.show, genre=meta.get("genre"))
     print(f"done in {time.time() - t0:.1f}s → open {out / 'viewer.html'}")
     if args.open:
         subprocess.run(["open", str(out / "viewer.html")])
@@ -50,8 +52,8 @@ def main():
     p.add_argument("-o", "--output", default="output")
     p.add_argument("--model", default="htdemucs_ft",
                    help="demucs model (htdemucs_ft = best; htdemucs = slightly faster)")
-    p.add_argument("--pitch", default="rmvpe", choices=["rmvpe", "crepe", "crepe-full"],
-                   help="pitch tracker (rmvpe is fastest + most accurate for singing)")
+    p.add_argument("--pitch", default="rmvpe", choices=["rmvpe", "fcpe", "crepe", "crepe-full"],
+                   help="pitch tracker (rmvpe is most accurate for singing; fcpe is faster and needs no download)")
     p.add_argument("--rmvpe", default=DEFAULT_RMVPE, type=Path, help="path to rmvpe.pt")
     p.add_argument("--device", default="auto", help="auto | mps | cuda | cpu")
     p.add_argument("--no-separate", action="store_true", help="input is already an isolated vocal")
@@ -73,6 +75,11 @@ def main():
     p.add_argument("--autotune", default="auto", choices=["auto", "on", "off"],
                    help="autotuned vocals: snap notes to the key and drop glitches (auto-detected by default)")
     p.add_argument("--key", help='force the key, e.g. "G major", "F#m" (default: read from the backing track)')
+    p.add_argument("--genre", default="auto",
+                   help='auto = recognise the genre and tune note detection for it; "off"; or tell it, e.g. "Hip-hop", '
+                        '"R&B / Soul" (genres: ' + ", ".join(GENRES) + ")")
+    p.add_argument("--no-rap", action="store_true",
+                   help="never mark phrases as rapped/spoken (by default rapped phrases become rhythm-only notes)")
     p.add_argument("--soundfont", type=Path, help=".sf2 piano to render with fluidsynth")
     p.add_argument("--show", type=int, default=30, help="how many notes to print")
     p.add_argument("--force", action="store_true", help="ignore cached stems / pitch")
@@ -81,6 +88,8 @@ def main():
 
     device = pick_device(args.device)
     print(f"device: {device}")
+    if args.genre not in ("auto", "off") and args.genre not in GENRES:
+        sys.exit(f"unknown genre {args.genre!r}: use auto, off or one of {', '.join(GENRES)}")
     for song in args.songs:
         if not song.exists():
             sys.exit(f"not found: {song}")

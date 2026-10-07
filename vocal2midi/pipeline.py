@@ -11,9 +11,11 @@ from pathlib import Path
 
 import numpy as np
 
+from . import genre as genres
+from .audio import load_audio
 from .harmony import analyze_backing
 from .notes import Settings, extract_notes
-from .pitch import DEFAULT_RMVPE, FPS, add_onset_features, track_pitch
+from .pitch import DEFAULT_RMVPE, FPS, SR, add_onset_features, track_pitch
 from .render import render_piano, write_midi, write_tables
 from .separate import separate_vocals
 from .viewer import write_viewer
@@ -69,27 +71,49 @@ def run(song: Path, out: Path, settings: Settings | None = None, *, model="htdem
     if add_onset_features(track, vocals):  # pitch cached before the onset model existed
         np.savez_compressed(cache, backend=pitch, **track)
 
-    # Song tuning and key, read from the backing track (steadier than the voice)
+    # Song tuning, key (and key changes) and tempo, read from the backing track (steadier than the voice)
     harmony = {}
     if backing is not None:
         harmony_cache = out / "backing.json"
         if is_fresh(harmony_cache, backing) and not force:
             harmony = json.loads(harmony_cache.read_text())
-        else:
+        if "keys" not in harmony:  # analysed before key changes and tempo were read
             harmony = analyze_backing(backing)
             harmony_cache.write_text(json.dumps(harmony))
 
+    # Genre: what YAMNet hears in the mix, and whether the vocal sounds sung or spoken
+    cfg = settings or Settings()
+    sounds = listen(song, vocals, out, cfg.genre, preview_seconds, force, log)
+    families, music = genres.genre_scores(sounds["mix"]) if sounds else ({}, 0.0)
+    guess = cfg.genre if cfg.genre not in ("auto", "off") else (genres.describe(families, music)["genre"] if sounds else None)
+
     # 3. Notes
     say(STAGES[2], 0.0)
-    log(f"[3/4] extracting notes ({ {'hybrid': 'onset model + HMM', 'ml': 'onset model', 'hmm': 'HMM'}[(settings or Settings()).method] })")
-    cfg = settings or Settings()
-    cfg = Settings(**{**cfg.__dict__, "reference_tuning": harmony.get("tuning"), "key": cfg.key or harmony.get("key")})
-    notes, info = extract_notes(track, FPS, cfg)
+    log(f"[3/4] extracting notes ({ {'hybrid': 'onset model + HMM', 'ml': 'onset model', 'hmm': 'HMM'}[cfg.method] }"
+        f"{', tuned for ' + guess if guess in genres.PROFILES else ''})")
+    cfg = genres.profile(Settings(**{**cfg.__dict__, "reference_tuning": harmony.get("tuning"),
+                                     "key": cfg.key or harmony.get("key"),
+                                     "key_changes": None if cfg.key else harmony.get("keys")}), guess)
+    speech = genres.speech_curve(sounds["vocals"], len(track["f0"]), FPS) if sounds else None
+    notes, info = extract_notes(track, FPS, cfg, speech=speech)
     duration = len(track["f0"]) / FPS
+    style = genres.vocal_style(notes, info)
+    if cfg.genre == "off":
+        song_genre = None
+    elif sounds:
+        song_genre = genres.describe(families, music, style, harmony.get("tempo"))
+        if cfg.genre != "auto":  # told what it is
+            song_genre.update(genre=cfg.genre, confidence=1.0)
+    else:
+        song_genre = {"genre": None if cfg.genre == "auto" else cfg.genre, "confidence": 0.0, "genres": [],
+                      "tempo": harmony.get("tempo"), "tags": [], "style": style}
     meta = {"source": song.name, "pitch_backend": pitch, "tuning_cents": info["tuning_cents"],
-            "key": info["key"], "autotune": info["autotune"], "duration": round(duration, 3),
-            "preview": preview}
+            "key": info["key"], "keys": info["keys"], "autotune": info["autotune"], "duration": round(duration, 3),
+            "preview": preview, "genre": song_genre}
     write_tables(notes, out / "notes.csv", out / "notes.json", meta)
+    if song_genre:
+        (out / "genre.json").write_text(json.dumps(song_genre))
+        log(f"      genre: {genres.text(song_genre)}")
     if preview:
         return notes, info, meta
 
@@ -100,5 +124,27 @@ def run(song: Path, out: Path, settings: Settings | None = None, *, model="htdem
     render_piano(notes, out / "melody.mid", out / "piano.wav", duration, soundfont)
     rel = lambda p: None if p is None else Path(p).resolve().relative_to(out.resolve(), walk_up=True).as_posix()
     write_viewer(out / "viewer.html", song.stem, notes, info, FPS, duration, pitch,
-                 {"vocals": rel(vocals), "backing": rel(backing)})
+                 {"vocals": rel(vocals), "backing": rel(backing)}, song_genre)
     return notes, info, meta
+
+
+def listen(song: Path, vocals: Path, out: Path, mode="auto", preview_seconds=None, force=False, log=print):
+    """YAMNet scores for the mix and the vocal, cached in out/yamnet.npz; None if genre
+    recognition is off or YAMNet can't be loaded (e.g. offline the first time)."""
+    if mode == "off":
+        return None
+    cache = out / "yamnet.npz"
+    if not force and is_fresh(cache, song, vocals):
+        return dict(np.load(cache))
+    try:
+        from . import yamnet
+
+        model = yamnet.get_model()
+        sounds = {"mix": yamnet.classify(load_audio(song, SR, max_seconds=preview_seconds), model),
+                  "vocals": yamnet.classify(load_audio(vocals, SR), model)}
+    except Exception as e:  # noqa: BLE001 -- the notes don't depend on it
+        log(f"      genre recognition unavailable ({type(e).__name__}: {e})")
+        return None
+    np.savez_compressed(cache, **{k: v.astype(np.float16) for k, v in sounds.items()})
+    return sounds
+

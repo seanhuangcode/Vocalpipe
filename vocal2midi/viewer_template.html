@@ -133,11 +133,15 @@ $("title").textContent = D.title;
 document.title = D.title + " · piano roll";
 if (notes.length) {
   const lo = notes.reduce((a, b) => b.pitch < a.pitch ? b : a), hi = notes.reduce((a, b) => b.pitch > a.pitch ? b : a);
+  const G = D.genre, spoken = notes.filter(n => n.spoken).length;
+  const keys = (D.keys || []).length > 1 ? `key ${D.keys.map(k => k[1]).join(" → ")}` : `key ${D.key}`;
   $("stats").innerHTML = [
-    `${notes.length} notes`, `range ${lo.name}–${hi.name} (${lo.note_hz.toFixed(0)}–${hi.note_hz.toFixed(0)} Hz)`,
-    `key ${D.key}`, D.autotune ? "autotuned vocal · notes snapped to key" : "natural vocal",
+    G && G.genre ? `<b>${G.genre}</b>${G.tempo ? ` · ~${Math.round(G.tempo)} BPM` : ""}${(G.tags || []).length ? " · " + G.tags.join(" · ") : ""}` : "",
+    `${notes.length} notes${spoken ? ` (${spoken} rapped: rhythm only, hatched)` : ""}`,
+    `range ${lo.name}–${hi.name} (${lo.note_hz.toFixed(0)}–${hi.note_hz.toFixed(0)} Hz)`,
+    keys, D.autotune ? "autotuned vocal · notes snapped to key" : "natural vocal",
     `length ${fmt(D.duration)}`, `singer tuning ${D.tuning_cents >= 0 ? "+" : ""}${D.tuning_cents}¢ vs A440`,
-    `pitch model: ${D.backend}`].map(s => `<span>${s}</span>`).join("");
+    `pitch model: ${D.backend}`].filter(Boolean).map(s => `<span>${s}</span>`).join("");
 }
 
 // ---------- audio ----------
@@ -252,7 +256,7 @@ function schedule() {
   for (const s of stems()) if (!s.el.seeking && Math.abs(s.el.currentTime - now) > 0.12) s.el.currentTime = now;
   while (nextIdx < notes.length && notes[nextIdx].start < now + 0.15) {
     const n = notes[nextIdx++];
-    if (n.end < now) continue;
+    if (n.end < now || n.spoken) continue;  // rapped syllables have no melody to play
     const delay = Math.max(0, n.start - now) / rate;
     const dur = (n.end - Math.max(n.start, now)) / rate;
     pianoNote(n.pitch, ctx.currentTime + delay, dur, n.velocity);
@@ -333,13 +337,18 @@ function draw() {
     const n = notes[i]; if (n.end < viewStart) continue;
     const x = xOf(n.start), y = (maxP - n.pitch) * rh;
     g2.globalAlpha = 0.45 + 0.55 * (n.velocity / 127);
-    g2.fillStyle = i === cur ? c.act : c.note;
+    g2.fillStyle = i === cur ? c.act : n.spoken ? c.muted : c.note;
     g2.beginPath(); g2.roundRect(x, y + 1, Math.max(2, (n.end - n.start) * pps - 1), rh - 2, Math.min(4, rh / 3)); g2.fill();
+    if (n.spoken) {  // rapped: rhythm only, hatched
+      g2.save(); g2.clip(); g2.strokeStyle = "rgba(255,255,255,.55)"; g2.lineWidth = 1.5;
+      for (let hx = x - rh; hx < x + (n.end - n.start) * pps; hx += 6) { g2.beginPath(); g2.moveTo(hx, y + rh); g2.lineTo(hx + rh, y); g2.stroke(); }
+      g2.restore();
+    }
     g2.globalAlpha = 1;
     if (i === hoverNote) { g2.strokeStyle = c.curve; g2.lineWidth = 1.5; g2.stroke(); }
     if ((n.end - n.start) * pps > 30 && rh >= 10) {
       g2.fillStyle = "#fff"; g2.font = `600 ${Math.min(11, rh - 2)}px system-ui`; g2.textBaseline = "middle";
-      g2.fillText(n.name, x + 4, y + rh / 2);
+      g2.fillText(n.spoken ? "rap" : n.name, x + 4, y + rh / 2);
     }
   }
   // pitch curve
@@ -441,7 +450,7 @@ $("zoom").oninput = e => { const mid = tOf((W() + KW) / 2); pps = +e.target.valu
 const tbody = $("rows");
 const centsClass = c => Math.abs(c) < 15 ? "c-good" : Math.abs(c) < 30 ? "c-warn" : "c-bad";
 tbody.innerHTML = notes.map((n, i) =>
-  `<tr data-i="${i}"><td>${i + 1}</td><td>${fmt(n.start)}</td><td>${(n.end - n.start).toFixed(2)}</td><td><b>${n.name}</b></td>` +
+  `<tr data-i="${i}"><td>${i + 1}</td><td>${fmt(n.start)}</td><td>${(n.end - n.start).toFixed(2)}</td><td><b>${n.spoken ? "rap" : n.name}</b></td>` +
   `<td>${n.hz.toFixed(1)}</td><td>${n.note_hz.toFixed(1)}</td><td class="${centsClass(n.cents)}">${n.cents >= 0 ? "+" : ""}${n.cents.toFixed(0)}</td><td>${n.velocity}</td></tr>`
 ).join("");
 tbody.onclick = e => { const tr = e.target.closest("tr"); if (!tr) return; const n = notes[+tr.dataset.i]; audition(n.pitch, Math.min(1.5, n.end - n.start)); seek(n.start); };

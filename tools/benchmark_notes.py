@@ -15,7 +15,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from vocadito import TRACKS, Vocadito, evaluate, fmt  # noqa: E402
 
-from vocal2midi.notes import Note, Settings, extract_notes  # noqa: E402
+from vocal2midi.notes import PREVIOUS, Note, Settings, extract_notes  # noqa: E402
 from vocal2midi.pitch import FPS  # noqa: E402
 
 
@@ -29,6 +29,7 @@ def main():
                        for (s, e), h in zip(*data.reference(i, "A2"))]
     print(fmt("human (annotator 2 vs 1)", evaluate(data, human)))
     print(fmt("pitch-only HMM", evaluate(data, lambda i: extract_notes(tracks[i], FPS, Settings(method="hmm"))[0])))
+    print(fmt("onset model, previous version", evaluate(data, lambda i: extract_notes(tracks[i], FPS, Settings(**PREVIOUS))[0])))
     print(fmt("onset model (in-sample)", evaluate(data, lambda i: extract_notes(tracks[i], FPS, Settings())[0])))
 
 

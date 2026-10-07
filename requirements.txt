@@ -11,4 +11,6 @@ numpy>=1.26
 certifi  # HTTPS for song search on macOS python.org builds
 scikit-learn>=1.3  # note-onset model
 joblib>=1.3
-mir_eval>=0.7  # only for tools/ (training + benchmark)
+h5py>=3.8  # genre recognition: reads the YAMNet weights (downloaded on first use)
+torchfcpe>=0.0.4  # --pitch fcpe: a pitch model with its weights built in (also the style benchmark's default)
+mir_eval>=0.7  # only for tools/ (training + benchmarks)

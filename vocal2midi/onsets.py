@@ -56,21 +56,28 @@ def audio_features(audio16k: np.ndarray, n_frames: int):
     return flux / (np.percentile(flux, 95) + 1e-9), fit(hf)
 
 
-def pitch_curve(track):
-    """(glitch-free MIDI pitch, voiced mask) as used for features and note pitches."""
+def pitch_curve(track, vibrato=True):
+    """(glitch-free MIDI pitch, voiced mask) as used for features and note pitches.
+
+    With `vibrato`, vibrato is averaged out to the note it centres on (see vibrato.py), so its
+    swings don't look like note changes."""
     f0, conf = track["f0"], track["conf"]
     midi = np.where(f0 > 0, 69 + 12 * np.log2(np.maximum(f0, 1e-3) / 440), np.nan)
     voiced = (conf > VOICED_CONF) & np.isfinite(midi)
     clean = midi.copy()
     for s, e in _runs(voiced):
         clean[s:e] = median_filter(midi[s:e], size=min(5, (e - s) | 1), mode="nearest")
+    if vibrato:
+        from .vibrato import find_vibrato
+
+        clean = find_vibrato(clean, voiced).centre
     return clean, voiced
 
 
-def frame_features(track) -> np.ndarray:
+def frame_features(track, vibrato=True) -> np.ndarray:
     conf, rms, flux, hf = track["conf"], track["rms_db"], track["flux"], track["hf"]
     n = len(conf)
-    clean, voiced = pitch_curve(track)
+    clean, voiced = pitch_curve(track, vibrato)
     # carry the last voiced pitch through gaps so pitch differences stay defined
     idx = np.where(voiced, np.arange(n), 0)
     np.maximum.accumulate(idx, out=idx)
@@ -115,8 +122,8 @@ class OnsetModel:
         self.threshold = model_info(path)["threshold"]
         self.model = joblib.load(path)
 
-    def onset_probability(self, track) -> np.ndarray:
-        return self.model.predict_proba(frame_features(track))[:, 1]
+    def onset_probability(self, track, vibrato=True) -> np.ndarray:
+        return self.model.predict_proba(frame_features(track, vibrato))[:, 1]
 
 
 def segment(prob, voiced, threshold, min_frames, gap_frames=6):
