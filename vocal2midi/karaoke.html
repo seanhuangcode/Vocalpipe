@@ -200,7 +200,7 @@ canvas#lane { display: block; width: 100%; height: 0; flex: 1 1 auto; min-height
 .badge { position: absolute; top: 14px; left: 52px; z-index: 3; font: 700 10.5px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em;
   color: #e9ddff; background: rgba(157, 125, 255, .2); border: 1px solid rgba(157, 125, 255, .55); padding: 6px 10px; border-radius: 999px; box-shadow: 0 0 14px -4px var(--violet); }
 .partial-badge { position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%); z-index: 3; white-space: nowrap;
-  font: 700 11.5px/1 var(--mono); background: rgba(10, 8, 22, .8); border: 1px solid rgba(255, 181, 71, .45); color: var(--gold); border-radius: 999px; padding: 7px 12px; backdrop-filter: blur(6px); }
+  font: 700 11.5px/1 var(--mono); background: rgba(10, 8, 22, .8); border: 1px solid rgba(255, 181, 71, .45); color: var(--gold); border-radius: 999px; padding: 7px 12px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 
 /* song map: every phrase as a lamp along the song, lit by how you sang it */
 .songmap { position: relative; flex: none; height: 30px; margin: 0 16px 12px; cursor: pointer; z-index: 2; }
@@ -379,7 +379,7 @@ input[type=range].slim::-webkit-slider-thumb { -webkit-appearance: none; width: 
 input[type=range].slim::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: #e6e0ff; box-shadow: 0 0 10px rgba(61, 230, 255, .7); }
 
 #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(120px); z-index: 70;
-  background: rgba(20, 16, 38, .92); color: var(--ink); border: 1px solid var(--edge-2); backdrop-filter: blur(12px);
+  background: rgba(20, 16, 38, .92); color: var(--ink); border: 1px solid var(--edge-2); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   padding: 11px 18px; border-radius: 14px; font-weight: 700; opacity: 0; transition: transform .28s cubic-bezier(.2, .9, .3, 1.2), opacity .2s; box-shadow: 0 20px 40px -12px rgba(0, 0, 0, .9), 0 0 24px -10px var(--violet); }
 #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
@@ -387,7 +387,7 @@ input[type=range].slim::-moz-range-thumb { width: 14px; height: 14px; border: 0;
 dialog { border: 1px solid var(--edge-2); border-radius: 26px; color: var(--ink); padding: 28px 34px; text-align: center;
   background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .01)), var(--panel-2);
   box-shadow: 0 40px 80px -20px rgba(0, 0, 0, .95), 0 0 60px -20px rgba(157, 125, 255, .6); }
-dialog::backdrop { background: rgba(5, 3, 14, .7); backdrop-filter: blur(4px); }
+dialog::backdrop { background: rgba(5, 3, 14, .7); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
 dialog:not([open]) { display: none; }
 dialog[open] { display: block; animation: rise .28s cubic-bezier(.2, .9, .3, 1.1); }
 @keyframes rise { from { opacity: 0; transform: translateY(16px) scale(.97); } }
@@ -426,9 +426,9 @@ dialog .summary { text-align: left; background: rgba(0, 0, 0, .3); border: 1px s
 .browse-head h2 { flex: 1; }
 .browse-filter { width: 100%; border: 1px solid var(--edge-2); border-radius: 14px; padding: 11px 14px; font-size: 16px; background: var(--night-2); outline: 0; box-shadow: inset 0 2px 8px rgba(0, 0, 0, .5); }
 .browse-filter:focus { border-color: rgba(61, 230, 255, .6); }
-.browse-list { overflow: auto; flex: 1; min-height: 220px; position: static; display: block; max-height: none; padding: 0; background: none; backdrop-filter: none; }
+.browse-list { overflow: auto; flex: 1; min-height: 220px; position: static; display: block; max-height: none; padding: 0; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .browse-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border-top: 1px solid var(--edge); padding-top: 12px; }
-#dropZone { position: fixed; inset: 0; z-index: 80; display: none; place-items: center; background: rgba(5, 3, 14, .7); backdrop-filter: blur(6px); }
+#dropZone { position: fixed; inset: 0; z-index: 80; display: none; place-items: center; background: rgba(5, 3, 14, .7); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 #dropZone.show { display: grid; }
 #dropZone .box { border: 2px dashed rgba(61, 230, 255, .7); border-radius: 28px; padding: 44px 60px; text-align: center; background: rgba(20, 16, 38, .8);
   box-shadow: 0 0 60px -10px rgba(61, 230, 255, .6), inset 0 0 40px -16px rgba(61, 230, 255, .6); }
@@ -584,10 +584,10 @@ dialog .summary { text-align: left; background: rgba(0, 0, 0, .3); border: 1px s
       <button class="btn icon" id="helpBtn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">?</button>
     </div>
     <div class="row">
-      <label class="knob amber" title="Backing track volume — drag, scroll or use the arrow keys; double-click to reset"><span class="knob-cap"><i></i></span>Backing<span class="knob-val"></span><input type="range" id="volBacking" min="0" max="1" step="0.01" value="0.85"></label>
-      <label class="knob pink" title="Original singer's voice, as a guide — drag, scroll or arrow keys"><span class="knob-cap"><i></i></span>Guide<span class="knob-val"></span><input type="range" id="volGuide" min="0" max="1" step="0.01" value="0.2"></label>
-      <label class="knob cyan" title="The melody played on piano — drag, scroll or arrow keys"><span class="knob-cap"><i></i></span>Piano<span class="knob-val"></span><input type="range" id="volPiano" min="0" max="1" step="0.01" value="0"></label>
-      <label class="knob violet" title="Playback speed — slow it down to learn a song"><span class="knob-cap"><i></i></span>Speed<span class="knob-val" id="speedVal">100%</span><input type="range" id="speed" min="0.5" max="1.25" step="0.05" value="1"></label>
+      <label class="knob amber" title="Backing track volume — drag up or down (then scroll to fine-tune); double-click to reset"><span class="knob-cap"><i></i></span>Backing<span class="knob-val"></span><input type="range" id="volBacking" min="0" max="1" step="0.01" value="0.85"></label>
+      <label class="knob pink" title="Original singer's voice, as a guide — drag up or down; double-click to reset"><span class="knob-cap"><i></i></span>Guide<span class="knob-val"></span><input type="range" id="volGuide" min="0" max="1" step="0.01" value="0.2"></label>
+      <label class="knob cyan" title="The melody played on piano — drag up or down; double-click to reset"><span class="knob-cap"><i></i></span>Piano<span class="knob-val"></span><input type="range" id="volPiano" min="0" max="1" step="0.01" value="0"></label>
+      <label class="knob violet" title="Playback speed — slow it down to learn a song; double-click to reset"><span class="knob-cap"><i></i></span>Speed<span class="knob-val" id="speedVal">100%</span><input type="range" id="speed" min="0.5" max="1.25" step="0.05" value="1"></label>
       <span class="ctl">Key <span class="keyer"><button class="btn sm" id="keyDown" aria-label="Lower the key">−</button><b class="lcd" id="keyVal">original</b><button class="btn sm" id="keyUp" aria-label="Raise the key">+</button></span></span>
       <span class="ctl">Difficulty<span class="seg" id="difficulty">
         <button data-v="easy" title="±75 cents, very relaxed timing"><span class="led"></span>Easy</button><button data-v="normal" class="on" title="±50 cents, relaxed timing; split-second notes are bonus"><span class="led"></span>Normal</button><button data-v="hard" title="±35 cents, tight timing, every note counts"><span class="led"></span>Hard</button></span></span>
@@ -905,7 +905,7 @@ function statusChip(s) {
 function sleeveHtml(s) {
   const best = store.get(`best:${s.song}`, null);
   const working = !s.processed && !s.preview && s.job && ["queued", "running"].includes(s.job.state);
-  return `<button class="sleeve${s.song === current ? " selected" : ""}" data-song="${esc(s.song)}" style="--lbl:${coverColor(s.song)}">
+  return `<button class="sleeve" data-song="${esc(s.song)}" style="--lbl:${coverColor(s.song)}">
     <span class="disc"><i></i></span>
     <span class="cover">${coverArt(s.song)}${s.artwork ? `<img src="${esc(s.artwork)}" alt="" onerror="this.remove()">` : ""}${working ? `<span class="busy-ring" style="--p:${(s.job.progress || 0).toFixed(3)}"></span>` : ""}</span>
     <span class="meta"><b>${esc(s.title || s.song)}</b><small>${esc(s.artist || (s.source === "library" ? "from your Mac" : s.file))}</small>
@@ -923,7 +923,7 @@ function renderShelf() {
     shelf.querySelectorAll(".sleeve").forEach((c, k) => c._html = html[k]);
     shelf.querySelector(".add-card input").onchange = e => { uploadFiles(e.target.files); e.target.value = ""; };
   }
-  shelf.querySelectorAll(".sleeve").forEach(c => c.onclick = () => chooseSong(c.dataset.song));
+  shelf.querySelectorAll(".sleeve").forEach(c => { c.classList.toggle("selected", c.dataset.song === current); c.onclick = () => chooseSong(c.dataset.song); });
   $("shelfHint").textContent = songs.length ? `${songs.filter(s => s.processed || s.preview).length} ready to sing` : "search, browse your music, or drop an mp3 to get started";
 }
 
@@ -2294,7 +2294,7 @@ if (window.ResizeObserver) new ResizeObserver(sizeCanvas).observe(cv);  // the l
 
 // ============ console knobs ============
 // Each knob drives a real range input (so Tab + arrow keys and screen readers work): drag
-// up/down, scroll, or double-click to reset.
+// up/down, scroll once you've grabbed it, or double-click to reset.
 const knobs = [...document.querySelectorAll(".knob")].map(el => ({ el, input: el.querySelector("input"), val: el.querySelector(".knob-val"), shown: null }));
 function syncKnobs() {
   for (const k of knobs) {
@@ -2313,9 +2313,9 @@ function setKnob(k, v) {
   k.input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 for (const k of knobs) {
-  let drag = null;
+  let drag = null, armed = false;
   k.el.addEventListener("pointerdown", e => {
-    e.preventDefault();  // no focus, so Space and the other shortcuts keep working after a twist
+    e.preventDefault(); armed = true;  // no focus, so Space and the other shortcuts keep working after a twist
     drag = { x: e.clientX, y: e.clientY, v: +k.input.value }; k.el.setPointerCapture(e.pointerId);
   });
   k.el.addEventListener("pointermove", e => {
@@ -2324,7 +2324,11 @@ for (const k of knobs) {
   k.el.addEventListener("pointerup", () => drag = null);
   k.el.addEventListener("pointercancel", () => drag = null);
   k.el.addEventListener("click", e => e.preventDefault());
-  k.el.addEventListener("wheel", e => { e.preventDefault(); setKnob(k, +k.input.value - Math.sign(e.deltaY) * +k.input.step * (k.input.id === "speed" ? 1 : 3)); }, { passive: false });
+  k.el.addEventListener("pointerleave", () => { if (!drag) armed = false; });
+  k.el.addEventListener("wheel", e => {  // only once grabbed, so scrolling the page past the console can't change the mix
+    if (!armed && document.activeElement !== k.input) return;
+    e.preventDefault(); setKnob(k, +k.input.value - Math.sign(e.deltaY) * +k.input.step * (k.input.id === "speed" ? 1 : 3));
+  }, { passive: false });
   k.el.addEventListener("dblclick", () => setKnob(k, +k.input.defaultValue));
 }
 

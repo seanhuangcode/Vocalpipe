@@ -11,7 +11,9 @@ the microphone.
   note-onset model trained on expert-transcribed singing.
 - **Karaoke app in the browser**: songs from your Mac (found automatically), drag-and-drop,
   a quick start so a new song is singable in about 5 seconds, live pitch scoring, phrase
-  looping, key and speed controls.
+  looping, key and speed controls. Notes light up like neon tubes as you hit them, a VU
+  meter shows how close you are, a map of the song's phrases shows how each one went, and
+  your best score is kept for every song.
 - **Command line** for batch processing: MIDI, note tables, a piano render and a piano-roll
   viewer for any song.
 
