@@ -1293,20 +1293,31 @@ function setPlayingUi(on) {
   $("playBtn").classList.toggle("is-playing", on); $("playBtn").setAttribute("aria-label", on ? "Pause" : "Play");
   document.body.classList.toggle("playing", on);
 }
+// play() waits for the audio clock and the stems. A second call meanwhile (a quick double tap)
+// must not start a second timer, which pause() would never clear; a seek meanwhile must win.
+let starting = false;
 async function play() {
-  if (!notes.length) return;
-  await ensureCtx();
-  const t = pausedAt >= duration - 0.1 ? 0 : pausedAt;
-  if (t === 0 && !loop) resetScore(0);
-  applyVolumes();
-  const els = stems();
-  els.forEach(a => { a.currentTime = t; a.playbackRate = rate; a.preservesPitch = true; });
-  await Promise.all(els.map(a => a.play().catch(() => {})));
-  offsetAtStart = t; ctxStart = ctx.currentTime;
-  nextSched = firstNoteEndingAfter(t);
-  playing = true;
-  setPlayingUi(true);
-  schedTimer = setInterval(schedulePiano, 25);
+  if (!notes.length || playing || starting) return;
+  starting = true;
+  try {
+    await ensureCtx();
+    for (;;) {
+      const want = pausedAt, t = want >= duration - 0.1 ? 0 : want;
+      if (t === 0 && !loop) resetScore(0);
+      applyVolumes();
+      const els = stems();
+      els.forEach(a => { a.currentTime = t; a.playbackRate = rate; a.preservesPitch = true; });
+      await Promise.all(els.map(a => a.play().catch(() => {})));
+      if (pausedAt !== want) continue;  // someone seeked while the stems were starting: start from there
+      offsetAtStart = t; ctxStart = ctx.currentTime;
+      nextSched = firstNoteEndingAfter(t);
+      playing = true;
+      setPlayingUi(true);
+      clearInterval(schedTimer);
+      schedTimer = setInterval(schedulePiano, 25);
+      return;
+    }
+  } finally { starting = false; }
 }
 function pause() {
   if (!playing) return;
