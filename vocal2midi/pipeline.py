@@ -74,10 +74,10 @@ def run(song: Path, out: Path, settings: Settings | None = None, *, model="htdem
     if backing is not None:
         harmony_cache = out / "backing.json"
         if is_fresh(harmony_cache, backing) and not force:
-            harmony = json.loads(harmony_cache.read_text())
+            harmony = json.loads(harmony_cache.read_text(encoding="utf-8"))
         else:
             harmony = analyze_backing(backing)
-            harmony_cache.write_text(json.dumps(harmony))
+            harmony_cache.write_text(json.dumps(harmony), encoding="utf-8")
 
     # 3. Notes
     say(STAGES[2], 0.0)

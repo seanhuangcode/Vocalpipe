@@ -21,5 +21,5 @@ def write_viewer(path, title, notes, info, fps, duration, backend, audio):
         "notes": [n.to_dict() for n in notes],
         "curve": [None if not np.isfinite(v) else round(float(v), 2) for v in curve],
     }
-    html = TEMPLATE.read_text().replace("/*__DATA__*/", json.dumps(data, separators=(",", ":")))
-    Path(path).write_text(html)
+    html = TEMPLATE.read_text(encoding="utf-8").replace("/*__DATA__*/", json.dumps(data, separators=(",", ":")))
+    Path(path).write_text(html, encoding="utf-8")

@@ -97,7 +97,7 @@ def model_info(path=MODEL_PATH) -> dict:
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"note onset model not found at {path} — run tools/train_onsets.py")
-    meta = json.loads(path.with_suffix(".json").read_text())
+    meta = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
     if meta.get("feature_version") != FEATURE_VERSION:
         raise RuntimeError("note onset model was trained on different features — retrain it")
     return meta

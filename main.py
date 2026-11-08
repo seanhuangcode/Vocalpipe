@@ -14,9 +14,9 @@ Each song gets a folder in output/ containing:
 """
 
 import argparse
-import subprocess
 import sys
 import time
+import webbrowser
 from pathlib import Path
 
 import vocal2midi  # noqa: F401  (sets MPS fallback before torch loads)
@@ -41,7 +41,7 @@ def process(song: Path, args, device: str):
     print_notes(notes, info, limit=args.show)
     print(f"done in {time.time() - t0:.1f}s → open {out / 'viewer.html'}")
     if args.open:
-        subprocess.run(["open", str(out / "viewer.html")])
+        webbrowser.open((out / "viewer.html").resolve().as_uri())
 
 
 def main():

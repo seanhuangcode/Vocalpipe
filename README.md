@@ -6,10 +6,10 @@ the microphone.
 
 ## What it does
 
-- **Separates the vocals** from the backing track (Demucs, on your Mac's GPU).
+- **Separates the vocals** from the backing track (Demucs, on your Mac's or NVIDIA graphics card, or the CPU).
 - **Tracks the singer's pitch** with RMVPE and turns it into notes using a small
   note-onset model trained on expert-transcribed singing.
-- **Karaoke app in the browser**: songs from your Mac (found automatically), drag-and-drop,
+- **Karaoke app in the browser**: songs on your computer (found automatically), drag-and-drop,
   a quick start so a new song is singable in about 5 seconds, live pitch scoring, phrase
   looping, key and speed controls. Notes light up like neon tubes as you hit them, a VU
   meter shows how close you are, a map of the song's phrases shows how each one went, and
@@ -18,6 +18,21 @@ the microphone.
   viewer for any song.
 
 ## Setup
+
+### Windows
+
+1. Install [Python 3.12 or newer](https://www.python.org/downloads/windows/), ticking
+   **Add python.exe to PATH** in the installer.
+2. Download this repository (green **Code** button → **Download ZIP**, then unzip it) or clone it.
+3. Double-click **`setup.bat`**. It installs ffmpeg (with winget), the Python packages (the
+   GPU build of PyTorch if you have an NVIDIA card) and the pitch model. It takes a while the
+   first time; run it again any time, it skips what's already done.
+4. Double-click **`start.bat`**. vocalpipe opens in your browser; close the window to stop it.
+
+Songs are found in your Music, Downloads and Desktop folders (OneDrive ones too). Key changes
+need an ffmpeg with the rubberband filter, which the build setup.bat installs includes.
+
+### macOS / Linux
 
 Needs Python 3.12+ and ffmpeg (`brew install ffmpeg` on macOS).
 
@@ -36,6 +51,8 @@ The Demucs model downloads itself the first time a song is processed.
 ```bash
 venv/bin/python serve.py
 ```
+
+On Windows, double-click `start.bat` instead (or run `venv\Scripts\python serve.py`).
 
 Open http://localhost:8765, pick a song (or drop an mp3 onto the page), put on headphones
 and press **🎤 Sing**. Press **?** in the app for keyboard shortcuts.

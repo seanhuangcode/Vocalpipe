@@ -1,10 +1,11 @@
-"""vocalpipe app server.
+r"""vocalpipe app server.
 
     venv/bin/python serve.py            # http://localhost:8765
     venv/bin/python serve.py --port 9000
+    venv\Scripts\python serve.py        # Windows (or double-click start.bat)
 
-Finding songs: every song already on this Mac is listed (via Spotlight: instant, whole
-disk, with title/artist/cover art), plus search results from ccMixter (full songs under
+Finding songs: every song already on this computer is listed (on a Mac via Spotlight: instant,
+whole disk, with title/artist/cover art; elsewhere by walking Music, Downloads and Desktop), plus search results from ccMixter (full songs under
 Creative Commons licences) and Apple's official 30-second previews (iTunes Search API).
 Files can also be dropped onto the page.
 
@@ -19,6 +20,7 @@ HTTP Range support so the browser can seek within the audio.
 """
 
 import argparse
+import errno
 import hashlib
 import html
 import itertools
@@ -51,9 +53,10 @@ AUDIO_EXT = {".mp3", ".wav", ".m4a", ".flac", ".ogg", ".aac", ".aif", ".aiff", "
 ROOT_EXT = AUDIO_EXT - {".wav"}  # loose .wav files in the project root are old outputs
 MAX_UPLOAD = 300 * 1024 * 1024
 META = SONGS / "meta.json"  # display info (title, artist, artwork) for added songs
-LIBRARY_DIRS = [Path.home() / d for d in ("Music", "Downloads", "Desktop")]
+# Windows often keeps these inside OneDrive
+LIBRARY_DIRS = [base / d for base in (Path.home(), Path.home() / "OneDrive") for d in ("Music", "Downloads", "Desktop")]
 SKIP_PARTS = ("/Library/", ".app/", "/node_modules/", "site-packages", "/.Trash/", "/venv/", "/.venv/",
-              "/tests/", "/test/", "/fixtures/")
+              "/tests/", "/test/", "/fixtures/", "/AppData/", "/$Recycle.Bin/")  # matched against "/"-separated paths
 # leftovers from separation/transcription tools aren't songs you'd want to sing
 STEM_NAMES = re.compile(r"^(vocals?|instrumental|no[_ ]vocals|accompaniment|acapella|drums|bass|other|stems?|"
                         r"melody[_ ]notes|detected[_ ]melody|piano[_ ]preview\d*|piano|rmvpe[_ ]\w+)( ?\(\d+\))?$"
@@ -75,7 +78,7 @@ def safe_name(name: str) -> str:
 
 def load_meta() -> dict:
     try:
-        return json.loads(META.read_text())
+        return json.loads(META.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
 
@@ -88,7 +91,23 @@ def save_meta(stem: str, info: dict):
         meta = load_meta()
         meta[stem] = {**meta.get(stem, {}), **{k: v for k, v in info.items() if v not in (None, "")}}
         SONGS.mkdir(exist_ok=True)
-        META.write_text(json.dumps(meta, indent=1))
+        META.write_text(json.dumps(meta, indent=1), encoding="utf-8")
+
+
+def meta_path(stem: str):
+    return load_meta().get(stem, {}).get("path")
+
+
+def link_or_copy(src: Path, dest: Path):
+    """Point songs/ at a library file without copying it where the system allows: a symlink, else
+    a hard link (Windows only allows symlinks with Developer Mode or admin rights), else a copy."""
+    for make in (dest.symlink_to, lambda s: os.link(s, dest)):
+        try:
+            make(src)
+            return
+        except (OSError, NotImplementedError):
+            pass
+    shutil.copy2(src, dest)
 
 
 def split_filename(stem: str):
@@ -159,8 +178,8 @@ class Library:
 
     @staticmethod
     def _wanted(path: str) -> bool:
-        p = Path(path)
-        return (p.suffix.lower() in AUDIO_EXT and not any(part in path for part in SKIP_PARTS)
+        p, slashed = Path(path), path.replace("\\", "/")
+        return (p.suffix.lower() in AUDIO_EXT and not any(part in slashed for part in SKIP_PARTS)
                 and not any(part.startswith(".") for part in p.parts) and ROOT not in p.parents
                 and not STEM_NAMES.search(p.stem))
 
@@ -202,7 +221,7 @@ class Library:
         songs = []
         for base in LIBRARY_DIRS:
             for dirpath, dirnames, filenames in os.walk(base, onerror=lambda e: None):
-                dirnames[:] = [d for d in dirnames if not d.startswith(".") and d not in ("node_modules", "venv", "Library")]
+                dirnames[:] = [d for d in dirnames if not d.startswith(".") and d not in ("node_modules", "venv", "Library", "AppData")]
                 for f in filenames:
                     path = os.path.join(dirpath, f)
                     if self._wanted(path):
@@ -541,13 +560,13 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json({"error": "that file isn't in the music library index"}, 400)
             src = Path(entry["path"])
             for stem, p in existing.items():  # already added? just use it
-                if p.is_symlink() and p.resolve() == src.resolve():
+                if p.resolve() == src.resolve() or meta_path(stem) == str(src):
                     break
             else:
                 stem = safe_name(f"{entry['artist']} - {entry['title']}" if entry["artist"] else entry["title"])
                 if stem in existing:
                     stem = f"{stem} ({int(time.time()) % 10000})"
-                (SONGS / f"{stem}{src.suffix.lower()}").symlink_to(src)  # full track, no copy
+                link_or_copy(src, SONGS / f"{stem}{src.suffix.lower()}")
             info = describe_song(stem, src, {"title": entry["title"], "artist": entry["artist"],
                                              "album": entry["album"], "source": "library", "path": str(src)})
         elif body.get("source") == "preview":
@@ -711,10 +730,11 @@ def main():
     try:
         server = ThreadingHTTPServer(("127.0.0.1", args.port), partial(Handler, directory=str(OUTPUT)))
     except OSError as e:
-        if e.errno != 48 and "in use" not in str(e):
+        if e.errno != errno.EADDRINUSE and "in use" not in str(e):
             raise
+        python = r"venv\Scripts\python" if os.name == "nt" else "venv/bin/python"
         sys.exit(f"Port {args.port} is already in use — the app may already be running at "
-                 f"http://localhost:{args.port}\nStop it, or pick another port: venv/bin/python serve.py --port {args.port + 1}")
+                 f"http://localhost:{args.port}\nStop it, or pick another port: {python} serve.py --port {args.port + 1}")
     print(f"vocalpipe at http://localhost:{args.port} (loading models in the background)")
     server.serve_forever()
 

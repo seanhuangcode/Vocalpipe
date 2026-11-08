@@ -22,11 +22,11 @@ def write_midi(notes, path, program=0):
 
 def write_tables(notes, csv_path, json_path, meta):
     rows = [n.to_dict() for n in notes]
-    with open(csv_path, "w", newline="") as f:
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=FIELDS)
         w.writeheader()
         w.writerows({k: r[k] for k in FIELDS} for r in rows)
-    with open(json_path, "w") as f:
+    with open(json_path, "w", encoding="utf-8") as f:
         json.dump({**meta, "notes": rows}, f, indent=1)
 
 

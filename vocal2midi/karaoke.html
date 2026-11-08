@@ -484,7 +484,7 @@ dialog .summary { text-align: left; background: rgba(0, 0, 0, .3); border: 1px s
       <div class="results panel" id="results" role="listbox"></div>
     </div>
     <div class="header-actions">
-      <button class="btn" id="browseBtn" title="Every song already on this Mac">
+      <button class="btn" id="browseBtn" title="Every song already on this computer">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg>My music</button>
       <label class="btn upload" title="Or drop songs anywhere on the page">＋ Add files<input type="file" id="fileIn" multiple accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.aac,.aif,.aiff,.opus" hidden></label>
     </div>
@@ -747,14 +747,14 @@ document.addEventListener("keydown", e => {  // "/" jumps to search from anywher
   }
 });
 
-// Clicking into search shows the songs already on this Mac straight away.
+// Clicking into search shows the songs already on this computer straight away.
 async function showSuggestions() {
   const seq = ++searchSeq, box = $("results");
   const r = await (await fetch("/api/library?limit=6")).json();
   if (seq !== searchSeq || $("q").value.trim().length >= 2) return;
   let html = r.songs.length
-    ? `<h4>On your Mac · ${r.total} song${r.total === 1 ? "" : "s"}</h4>` + r.songs.map((x, i) => libraryRow(x, `data-lib="${i}"`)).join("")
-    : `<div class="empty">${r.ready ? "No songs found on this Mac yet." : "Looking through your music…"}</div>`;
+    ? `<h4>On this computer · ${r.total} song${r.total === 1 ? "" : "s"}</h4>` + r.songs.map((x, i) => libraryRow(x, `data-lib="${i}"`)).join("")
+    : `<div class="empty">${r.ready ? "No songs found on this computer yet." : "Looking through your music…"}</div>`;
   html += `<div class="empty suggest-foot"><button class="btn" id="browseAll">Browse all ${r.total || ""} →</button>
     <span>or drop an mp3 anywhere · type to search online</span></div>`;
   box.innerHTML = html; box.classList.add("open");
@@ -772,7 +772,7 @@ async function runSearch(q) {
   if (seq !== searchSeq) return;
   let html = "";
   if (r.library.length) {
-    html += `<h4>On your Mac · full song</h4>` + r.library.map((x, i) => libraryRow(x, `data-lib="${i}"`)).join("");
+    html += `<h4>On this computer · full song</h4>` + r.library.map((x, i) => libraryRow(x, `data-lib="${i}"`)).join("");
   }
   if (r.free?.length) {
     html += `<h4>Free full songs · Creative Commons (ccMixter)</h4>`;
@@ -804,7 +804,7 @@ async function addSong(body, btn) {
   await refreshSongs(j.song);
 }
 
-// ---- browse everything on this Mac, or a folder you pick ----
+// ---- browse everything on this computer, or a folder you pick ----
 let browseSongs = [], picked = [];
 async function openBrowse() {
   openDialog($("browseDlg"));
@@ -812,7 +812,7 @@ async function openBrowse() {
   $("browseList").innerHTML = `<div class="empty">Looking through your music…</div>`;
   const r = await (await fetch("/api/library?limit=1000")).json();
   browseSongs = r.songs;
-  $("browseCount").textContent = r.ready ? `${r.total} song${r.total === 1 ? "" : "s"} found on this Mac` : "Still looking through your music…";
+  $("browseCount").textContent = r.ready ? `${r.total} song${r.total === 1 ? "" : "s"} found on this computer` : "Still looking through your music…";
   renderBrowse();
   $("browseFilter").focus();
 }
@@ -826,10 +826,10 @@ function renderBrowse() {
     html += `<h4>From the folder you picked · ${folder.length}</h4>` + folder.slice(0, 200).map(f => `<div class="result"><div class="art">${coverArt(f.name)}</div>
       <div><b>${esc(f.name.replace(AUDIO_RE, ""))}</b><small>${esc((f.webkitRelativePath || "").split("/").slice(0, -1).join("/"))} · ${(f.size / 1e6).toFixed(1)} MB</small></div>
       <button class="btn go" data-pick="${picked.indexOf(f)}">Sing it</button></div>`).join("");
-    html += `<h4>Everything on this Mac</h4>`;
+    html += `<h4>Everything on this computer</h4>`;
   }
   html += mine.length ? mine.slice(0, 400).map(x => libraryRow(x, `data-path="${esc(x.path)}"`)).join("")
-    : `<div class="empty">${words.length ? "No songs match — try another word, or pick a folder below." : "No songs found on this Mac — pick a folder or drop files below."}</div>`;
+    : `<div class="empty">${words.length ? "No songs match — try another word, or pick a folder below." : "No songs found on this computer — pick a folder or drop files below."}</div>`;
   $("browseList").innerHTML = html;
   $("browseList").querySelectorAll("[data-path]").forEach(b => b.onclick = () => {
     const x = browseSongs.find(s => s.path === b.dataset.path);
@@ -908,7 +908,7 @@ function sleeveHtml(s) {
   return `<button class="sleeve" data-song="${esc(s.song)}" style="--lbl:${coverColor(s.song)}">
     <span class="disc"><i></i></span>
     <span class="cover">${coverArt(s.song)}${s.artwork ? `<img src="${esc(s.artwork)}" alt="" onerror="this.remove()">` : ""}${working ? `<span class="busy-ring" style="--p:${(s.job.progress || 0).toFixed(3)}"></span>` : ""}</span>
-    <span class="meta"><b>${esc(s.title || s.song)}</b><small>${esc(s.artist || (s.source === "library" ? "from your Mac" : s.file))}</small>
+    <span class="meta"><b>${esc(s.title || s.song)}</b><small>${esc(s.artist || (s.source === "library" ? "from your music" : s.file))}</small>
     <span class="chips">${statusChip(s)}${best != null ? `<span class="chip best" title="Your best score">★ ${best}%</span>` : ""}${s.source === "preview" ? '<span class="chip">30s clip</span>' : s.source === "free" ? '<span class="chip">CC</span>' : ""}</span></span></button>`;
 }
 // Only cards that changed are replaced, so a spinning record or a hover isn't interrupted by the poll.
