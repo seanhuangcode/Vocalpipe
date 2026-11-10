@@ -25,7 +25,7 @@ from vocal2midi.notes import Note, Settings, extract_notes  # noqa: E402
 from vocal2midi.onsets import FEATURE_VERSION, MODEL_PATH, frame_features  # noqa: E402
 from vocal2midi.pitch import FPS  # noqa: E402
 
-THRESHOLDS = (0.2, 0.25, 0.3, 0.4, 0.5)
+THRESHOLDS = (0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.5)
 
 
 def main():
@@ -72,6 +72,7 @@ def main():
         "human (annotator 2 vs 1)": evaluate(data, human),
         "pitch-only HMM": evaluate(data, lambda i: extract_notes(tracks[i], FPS, Settings(method="hmm"))[0]),
         "onset model + HMM pitch (cross-validated)": evaluate(data, lambda i: held_out[i]),
+        "  same, scored against annotator 2": evaluate(data, lambda i: held_out[i], annotator="A2"),
     }
     for label, m in results.items():
         print(fmt(label, m))

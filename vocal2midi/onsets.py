@@ -3,8 +3,9 @@
 A gradient-boosted classifier looks at every 10 ms frame and predicts "a new note
 starts here" from pitch movement (how far the pitch moves across the frame at
 several time scales, and how steady it is either side), loudness and voicing
-changes, and consonant cues (spectral flux, high-frequency energy). Notes are the
-spans between predicted onsets; each gets the pitch the singer holds in its middle.
+changes, and consonant cues (spectral flux, high-frequency energy). Each frame also
+sees the same cues for its neighbours 30 ms either side. Notes are the spans
+between predicted onsets; each gets the pitch the singer holds in its middle.
 
 Trained on Vocadito (Bittner et al., 2021, CC BY 4.0): 40 solo-singing recordings
 with expert note annotations. See tools/train_onsets.py and tools/benchmark_notes.py.
@@ -20,7 +21,8 @@ from scipy.ndimage import maximum_filter1d, median_filter
 
 MODEL_PATH = Path(__file__).resolve().parent.parent / "models" / "note_onsets.joblib"
 LAGS = (1, 2, 3, 5, 8, 12)
-FEATURE_VERSION = 1
+CONTEXT = 3  # frames of neighbouring features stacked on each side
+FEATURE_VERSION = 2
 VOICED_CONF = 0.4
 
 
@@ -89,7 +91,10 @@ def frame_features(track) -> np.ndarray:
     cols += [before.std(1), after.std(1), after_med - np.median(before, 1), np.abs(after_med - np.round(after_med))]
     peak = maximum_filter1d(flux, 9)
     cols += [flux - peak, (flux >= peak).astype(float)]
-    return np.stack(cols, 1).astype(np.float32)
+    frame = np.stack(cols, 1).astype(np.float32)
+    # the same cues from the frames around it (edge frames repeat themselves)
+    padded = np.pad(frame, ((CONTEXT, CONTEXT), (0, 0)), mode="edge")
+    return np.concatenate([padded[CONTEXT + k:CONTEXT + k + n] for k in range(-CONTEXT, CONTEXT + 1)], 1)
 
 
 @lru_cache(maxsize=2)

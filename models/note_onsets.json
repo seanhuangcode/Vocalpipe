@@ -1,6 +1,6 @@
 {
- "feature_version": 1,
- "threshold": 0.25,
+ "feature_version": 2,
+ "threshold": 0.3,
  "trained_on": "Vocadito (Bittner et al., 2021), CC BY 4.0 \u2014 40 solo-singing recordings, annotator A1",
  "cross_validated": {
   "human (annotator 2 vs 1)": {
@@ -12,17 +12,24 @@
   },
   "pitch-only HMM": {
    "f1": 0.6207,
-   "f1_offsets": 0.3388,
-   "on_pitch": 0.8175,
-   "wrong_pitch": 0.1689,
-   "missing": 0.0136
+   "f1_offsets": 0.4425,
+   "on_pitch": 0.8004,
+   "wrong_pitch": 0.1613,
+   "missing": 0.0383
   },
   "onset model + HMM pitch (cross-validated)": {
-   "f1": 0.6882,
-   "f1_offsets": 0.3906,
-   "on_pitch": 0.8376,
-   "wrong_pitch": 0.1536,
-   "missing": 0.0087
+   "f1": 0.7009,
+   "f1_offsets": 0.54,
+   "on_pitch": 0.8356,
+   "wrong_pitch": 0.1386,
+   "missing": 0.0258
+  },
+  "  same, scored against annotator 2": {
+   "f1": 0.6983,
+   "f1_offsets": 0.5313,
+   "on_pitch": 0.8292,
+   "wrong_pitch": 0.1452,
+   "missing": 0.0256
   }
  }
 }

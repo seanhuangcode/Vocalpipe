@@ -60,7 +60,9 @@ class Settings:
     outlier_cap: float = 4.0  # limits how much one stray frame can count against a note
     min_note: float = 0.06  # seconds
     split_db: float = 10.0  # loudness dip that re-articulates a held pitch
-    legato: float = 0.25  # seconds; stretch notes across gaps shorter than this (0 = off)
+    legato: float = 0.1  # seconds; stretch notes across gaps shorter than this, i.e. consonants (0 = off)
+    trim_start: float = 0.1  # fraction of a note skipped before measuring its pitch (scoops in)
+    trim_end: float = 0.1  # fraction skipped at the end (falls off)
     min_pitch: int = 36  # C2
     max_pitch: int = 96  # C7
     auto_tuning: bool = True  # correct for a song not tuned to A440 (see reference_tuning)
@@ -271,7 +273,8 @@ def extract_notes(track: dict, fps: float, cfg: Settings = Settings(), onset_pro
         notes = _notes_from_onsets(track, clean, voiced, tuning, cfg, min_len, fps, ref_db, onset_prob, path)
 
     # Legato: hold each note until the next one starts when the gap is just a
-    # consonant or breath, instead of leaving choppy silences.
+    # consonant, instead of leaving choppy silences. (Measured against expert
+    # transcriptions, bridging breaths too makes the note ends much less accurate.)
     for n, nxt in zip(notes, notes[1:]):
         if 0 < nxt.start - n.end <= cfg.legato:
             n.end = nxt.start
@@ -290,15 +293,15 @@ def _notes_from_onsets(track, clean, voiced, tuning, cfg, min_len, fps, ref_db, 
     _, tracked = pitch_curve(track)
     notes = []
     for s, e in segment(onset_prob, tracked & voiced, threshold, min_len):
-        trim = (e - s) // 5
-        core = clean[s + trim:e - trim]
+        a, b = s + int(cfg.trim_start * (e - s)), e - int(cfg.trim_end * (e - s))
+        core = clean[a:b]
         core = core[np.isfinite(core)]
         if len(core) < 3:
             continue
         est = float(np.median(core))
         pitch = int(np.round(est))
         if path is not None:
-            held = path[s + trim:e - trim]
+            held = path[a:b]
             held = held[held >= 0]
             if len(held):
                 pitch = int(np.bincount(held).argmax())

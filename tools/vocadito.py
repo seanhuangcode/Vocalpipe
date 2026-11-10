@@ -21,13 +21,14 @@ TRACKS = list(range(1, 41))
 
 
 class Vocadito:
-    def __init__(self, root, device="mps"):
+    def __init__(self, root, device="auto"):
         self.root = Path(root)
         if not (self.root / "Audio").is_dir():
             sys.exit(f"{self.root} doesn't look like the unzipped vocadito folder (no Audio/)")
         self.cache = self.root / "_pitch_cache"
         self.cache.mkdir(exist_ok=True)
-        self.device = device
+        from vocal2midi.audio import pick_device
+        self.device = pick_device(device)
 
     def reference(self, i, annotator="A1"):
         a = np.loadtxt(self.root / f"Annotations/Notes/vocadito_{i}_notes{annotator}.csv", delimiter=",", ndmin=2)

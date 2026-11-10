@@ -78,8 +78,23 @@ Run `venv/bin/python main.py --help` for options (`--sensitivity`, `--key`, `--a
 ## Accuracy
 
 Measured on the [Vocadito](https://zenodo.org/records/5578807) dataset (CC BY 4.0) with
-5-fold cross-validation: note F1 0.69 (a second human transcriber scores 0.72), with
-15% of note time on the wrong pitch. Retrain or re-check with:
+5-fold cross-validation, scored against annotator 1 (a second human transcriber is the
+ceiling to compare with):
+
+| | note F1 | F1 incl. note ends | wrong pitch |
+|---|---|---|---|
+| second human transcriber | 0.72 | 0.63 | 9.5% |
+| vocalpipe | 0.70 | 0.54 | 13.9% |
+| earlier model | 0.69 | 0.39 | 15.3% |
+
+What changed: the onset model also sees the cues of the frames 30 ms either side, a note's
+pitch is measured from more of the note, and notes are only stretched across consonant-length
+gaps (100 ms), not breaths. On synthetic tests built from the same recordings, a backing
+harmony a third away at -6 dB or a doubled take costs almost nothing (F1 0.69-0.71), a harmony
+as loud as the lead costs a lot (0.63), and short ad-libs between phrases mostly get
+transcribed (0.68): the app leaves out notes under 150 ms, which removes the briefest ones.
+A loudness-based ad-lib filter was tried and rejected because it removed more real singing
+than ad-libs. Retrain or re-check with:
 
 ```bash
 venv/bin/python tools/train_onsets.py --data path/to/vocadito
