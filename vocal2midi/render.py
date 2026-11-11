@@ -35,7 +35,7 @@ def synth_piano(notes, duration, sr=44100):
     out = np.zeros(int((duration + 2) * sr), dtype=np.float32)
     partials = np.array([1.0, 0.45, 0.3, 0.16, 0.1, 0.06, 0.04, 0.025])
     k = np.arange(1, len(partials) + 1)
-    release = 0.15
+    release = 0.25  # a longer tail: notes hand over to the next one instead of stopping dead
     for n in notes:
         f = float(midi_to_hz(n.pitch))
         freqs = k * f * np.sqrt(1 + 0.0004 * k**2)
@@ -47,7 +47,7 @@ def synth_piano(notes, duration, sr=44100):
                 * np.exp(-decay[:, None] * t)).sum(0)
         env = np.minimum(t / 0.004, 1.0)
         tail = t > dur
-        env[tail] *= np.exp(-(t[tail] - dur) / (release / 4))
+        env[tail] *= np.exp(-(t[tail] - dur) / (release / 2.5))
         s = int(n.start * sr)
         seg = (tone * env * (n.velocity / 127) * 0.3).astype(np.float32)
         out[s:s + len(seg)] += seg[: len(out) - s]
